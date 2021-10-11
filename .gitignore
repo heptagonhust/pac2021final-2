@@ -1,0 +1,6 @@
+build
+*.gz
+*.out
+data/stat.txt
+*.h5
+obj
