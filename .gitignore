@@ -1,6 +1,9 @@
 build
 *.gz
 *.out
-data/stat.txt
+data/*
+!data/stat.txt
+!data/*.sh
 *.h5
 obj
+ST_BarcodeMap-0.0.1

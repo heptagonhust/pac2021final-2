@@ -3,11 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef DYNAMIC_ZLIB
-  #include <zlib.h>
-#else
-  #include "zlib/zlib.h"
-#endif
+#include "zstd/zstd_zlibwrapper.h"
 #include "common.h"
 #include <iostream>
 #include <fstream>
