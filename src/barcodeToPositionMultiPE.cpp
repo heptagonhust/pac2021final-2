@@ -350,14 +350,8 @@ void BarcodeToPositionMultiPE::consumerTask(Result* result) {
 }
 
 void BarcodeToPositionMultiPE::writeTask(WriterThread* config) {
-	while (true) {
-		if (config->isCompleted()) {
-			config->output();
-			break;
-		}
-		config->output();
-	}
 
+	config->outputTask();
 	if (mOptions->verbose) {
 		string msg = config->getFilename() + " writer finished";
 		loginfo(msg);

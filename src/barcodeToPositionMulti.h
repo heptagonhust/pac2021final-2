@@ -13,18 +13,17 @@
 #include "writerThread.h"
 #include "result.h"
 
+#include "ringbuf.hpp"
+
 using namespace std;
 
-typedef struct ReadPairPack {
-	ReadPair** data;
+struct ReadPairPack {
+	ReadPair data[PACK_SIZE];
 	int count;
-}ReadPairPack;
-
-typedef struct ReadPairRepository {
-	ReadPairPack** packBuffer;
-	atomic_long readPos;
-	atomic_long writePos;
-}ReadPairRepository;
+	ReadPairPack() {
+		count = 0;
+	}
+};
 
 class BarcodeToPositionMulti {
 public:
@@ -39,8 +38,8 @@ private:
 	void destroyPackRepository();
 	void producePack(ReadPairPack* pack);
 	void consumePack(Result* result);
-	void producerTask();
-	void consumerTask(Result* result);
+	void producerTask(RingBuf<ReadPairPack> *rb);
+	void consumerTask(int thread_id, RingBuf<ReadPairPack> *rb, Result* result);
 	void writeTask(WriterThread* config);
 	
 public:
@@ -50,11 +49,7 @@ public:
 	//unordered_map<uint64, Position*> misBarcodeMap;
 
 private:
-	ReadPairRepository mRepo;
-	atomic_bool mProduceFinished;
-	atomic_int mFinishedThreads;
 	std::mutex mOutputMtx;
-	std::mutex mInputMutx;
 	gzFile mZipFile;
 	ofstream* mOutStream;
 	WriterThread* mWriter;

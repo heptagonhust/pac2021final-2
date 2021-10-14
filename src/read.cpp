@@ -194,6 +194,10 @@ ReadPair::ReadPair(Read* left, Read* right){
 	mRight = right;
 }
 
+ReadPair::ReadPair(){
+	
+}
+
 ReadPair::~ReadPair(){
 	if(mLeft){
 		delete mLeft;

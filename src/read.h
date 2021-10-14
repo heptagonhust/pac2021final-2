@@ -57,6 +57,7 @@ public:
 class ReadPair{
 public:
     ReadPair(Read* left, Read* right);
+    ReadPair();
     ~ReadPair();
 
     // merge a pair, without consideration of seq error caused false INDEL
