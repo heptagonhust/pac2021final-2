@@ -27,9 +27,10 @@ BarcodeToPositionMulti::~BarcodeToPositionMulti()
 bool BarcodeToPositionMulti::process()
 {
 	initOutput();
-	RingBuf<ReadPairPack> pack_ringbufs[mOptions->thread];
+	RingBufPair pack_ringbufs[mOptions->thread];
 	
-	std::thread producer(std::bind(&BarcodeToPositionMulti::producerTask, this, &pack_ringbufs[0]));
+	std::thread producerLeft(std::bind(&BarcodeToPositionMulti::producerTaskLeft, this, &pack_ringbufs[0]));
+	std::thread producerRight(std::bind(&BarcodeToPositionMulti::producerTaskRight, this, &pack_ringbufs[0]));
 
 	Result** results = new Result*[mOptions->thread];
 	BarcodeProcessor** barcodeProcessors = new BarcodeProcessor*[mOptions->thread];
@@ -51,11 +52,11 @@ bool BarcodeToPositionMulti::process()
 	if (mUnmappedWriter) {
 		unMappedWriterThread = new std::thread(std::bind(&BarcodeToPositionMulti::writeTask, this, mUnmappedWriter));
 	}
-
-	producer.join();
+	producerLeft.detach();
+	producerRight.detach();
 	for (int t = 0; t < mOptions->thread; t++) {
 		threads[t]->join();
-	}
+	}	
 
 	if (mWriter)
 		mWriter->setInputCompleted();
@@ -131,7 +132,8 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 	string unmappedOut;
 	bool hasPosition;
 	bool fixedFiltered;
-	for (int p = 0; p < pack->count; p++) {
+	const int count = min(pack->count_right, pack->count_left);
+	for (int p = 0; p < count; p++) {
 		result->mTotalRead++;
 		ReadPair* pair = &pack->data[p];
 		Read* or1 = pair->mLeft;
@@ -172,6 +174,103 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 	return true;
 }
 
+void BarcodeToPositionMulti::producerTaskLeft(RingBufPair *rb) {
+	if (mOptions->verbose)
+		loginfo("start to load data");
+	
+	bool mInterleaved = false;
+	assert(mInterleaved == false);
+
+	FastqReader reader(mOptions->transBarcodeToPos.in1);
+	int count = 0;
+
+	int thread_id = 0;
+	int num_threads = mOptions->thread;
+	ReadPairPack* pack = rb[thread_id].enqueue_acquire_left();
+	while (true) {
+		Read* read = reader.read();
+		pack->data[count].mLeft = read;
+
+		if (!read) {
+			pack->count_left = count;
+			rb[thread_id].enqueue_left();
+			break;
+		}
+
+		count++;
+		
+		if (count == PACK_SIZE) {
+			pack->count_left = count;
+			rb[thread_id].enqueue_left();
+
+			thread_id = (thread_id + 1) % num_threads;
+			pack = rb[thread_id].enqueue_acquire_left();
+
+			// reset count to 0
+			count = 0;
+		}
+	}
+
+	// produce empty pack to tell consumer to stop
+	for(int i=0;i<mOptions->thread;i++) {
+		ReadPairPack* pack = rb[i].enqueue_acquire_left();
+		pack->count_left = 0;
+
+		rb[i].enqueue_left();
+	}
+
+	if (mOptions->verbose) {
+		loginfo("all reads of in1 loaded, start to monitor thread status");
+	}
+}
+
+void BarcodeToPositionMulti::producerTaskRight(RingBufPair *rb) {
+	bool mInterleaved = false;
+	assert(mInterleaved == false);
+
+	FastqReader reader(mOptions->transBarcodeToPos.in2);
+	int count = 0;
+
+	int thread_id = 0;
+	int num_threads = mOptions->thread;
+	ReadPairPack* pack = rb[thread_id].enqueue_acquire_right();
+	while (true) {
+		Read* read = reader.read();
+		pack->data[count].mRight = read;
+
+		if (!read) {
+			pack->count_right = count;
+			rb[thread_id].enqueue_right();
+			break;
+		}
+		count++;
+
+		if (count == PACK_SIZE) {
+			pack->count_right = count;
+			rb[thread_id].enqueue_right();
+
+			thread_id = (thread_id + 1) % num_threads;
+			pack = rb[thread_id].enqueue_acquire_right();
+
+			// reset count to 0
+			count = 0;
+		}
+	}
+
+	// produce empty pack to tell consumer to stop
+	for(int i=0;i<mOptions->thread;i++) {
+		ReadPairPack* pack = rb[i].enqueue_acquire_right();
+		pack->count_right = 0;
+
+		rb[i].enqueue_right();
+	}
+
+	if (mOptions->verbose) {
+		loginfo("all reads of in2 loaded, start to monitor thread status");
+	}
+}
+
+/*
 void BarcodeToPositionMulti::producerTask(RingBuf<ReadPairPack> *rb) {
 	if (mOptions->verbose)
 		loginfo("start to load data");
@@ -227,12 +326,13 @@ void BarcodeToPositionMulti::producerTask(RingBuf<ReadPairPack> *rb) {
 		loginfo("all reads loaded, start to monitor thread status");
 	}
 }
+*/
 
-void BarcodeToPositionMulti::consumerTask(int thread_id, RingBuf<ReadPairPack> *rb, Result* result) {
+void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result* result) {
 	const int num_thread = mOptions->thread;	
 	while (true) {
 		ReadPairPack* pack = rb->dequeue_acquire();
-		if(pack->count == 0) {
+		if(pack->count_left == 0 || pack->count_right == 0) {
 			if (mOptions->verbose) {
 				string msg = "finished " + to_string(thread_id) + " threads. Data processing completed.";
 				loginfo(msg);

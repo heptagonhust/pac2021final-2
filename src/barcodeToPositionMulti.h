@@ -14,16 +14,9 @@
 #include "result.h"
 
 #include "ringbuf.hpp"
+#include "ringbuf_pair.h"
 
 using namespace std;
-
-struct ReadPairPack {
-	ReadPair data[PACK_SIZE];
-	int count;
-	ReadPairPack() {
-		count = 0;
-	}
-};
 
 class BarcodeToPositionMulti {
 public:
@@ -38,8 +31,9 @@ private:
 	void destroyPackRepository();
 	void producePack(ReadPairPack* pack);
 	void consumePack(Result* result);
-	void producerTask(RingBuf<ReadPairPack> *rb);
-	void consumerTask(int thread_id, RingBuf<ReadPairPack> *rb, Result* result);
+	void producerTaskLeft(RingBufPair *rb);
+	void producerTaskRight(RingBufPair *rb);
+	void consumerTask(int thread_id, RingBufPair *rb, Result* result);
 	void writeTask(WriterThread* config);
 	
 public:
