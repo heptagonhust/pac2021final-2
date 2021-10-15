@@ -2,8 +2,8 @@
 #include "util.h"
 #include <string.h>
 
-#define FQ_BUF_SIZE (1ll<<35)
-#define FQ_BUF_SIZE_ONCE (1<<25)
+#define FQ_BUF_SIZE (1ll<<28)
+#define FQ_BUF_SIZE_ONCE (1<<20)
 
 FastqReader::FastqReader(string filename, bool hasQuality, bool phred64){
 	mFilename = filename;
@@ -63,21 +63,19 @@ void FastqReader::readToBufLarge() {
 void FastqReader::stringProcess() {
 	char* ptr = &mBufLarge[0];
 	char** rb_item = nullptr;
-	while (!mReadFinished) {
-		while (mStringProcessedLength < mBufReadLength) {
-			int k = 1;
-			if (*ptr == '\n' || *ptr == '\r') {
-				*ptr = '\0';
-				rb_item = produce_rb.enqueue_acquire();
-				while (*(ptr+k) == '\n') {
-					k ++;
-				}
-				*rb_item = ptr + k;
-				produce_rb.enqueue();
+	while (!mReadFinished || mStringProcessedLength < mBufReadLength) {
+		int k = 1;
+		if (*ptr == '\n' || *ptr == '\r') {
+			*ptr = '\0';
+			rb_item = produce_rb.enqueue_acquire();
+			while (*(ptr+k) == '\n') {
+				k ++;
 			}
-			ptr += k;
-			mStringProcessedLength += k;
+			*rb_item = ptr + k;
+			produce_rb.enqueue();
 		}
+		ptr += k;
+		mStringProcessedLength += k;
 	}
 }
 
@@ -99,7 +97,9 @@ void FastqReader::init(){
 		mZipped = false;
 	}
 	std::thread readBuffer(std::bind(&FastqReader::readToBufLarge, this));
+	readBuffer.detach();
 	std::thread stringProcess(std::bind(&FastqReader::stringProcess, this));
+	stringProcess.detach();
 }
 
 void FastqReader::getBytes(size_t& bytesRead, size_t& bytesTotal) {
