@@ -47,7 +47,7 @@ private:
 	bool mHasQuality;
 	bool mPhred64;
 	bool mReadFinished;
-	RingBuf<char*> produce_rb;
+	RingBuf<char*> *produce_rb;
 	bool mStdinMode;
 	bool mHasNoLineBreakAtEnd;
 	size_t mBufReadLength;
