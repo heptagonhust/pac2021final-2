@@ -8,6 +8,9 @@
 #include "common.h"
 #include <iostream>
 #include <fstream>
+#include "ringbuf.hpp"
+#include <thread>
+#include <functional>
 
 class FastqReader{
 public:
@@ -33,7 +36,8 @@ private:
 	void close();
 	string getLine();
 	void clearLineBreaks(char* line);
-	void readToBuf();
+	void readToBufLarge();
+	void stringProcess();
 
 private:
 	string mFilename;
@@ -42,11 +46,14 @@ private:
 	bool mZipped;
 	bool mHasQuality;
 	bool mPhred64;
-	char* mBuf;
-	int mBufDataLen;
-	int mBufUsedLen;
+	bool mReadFinished;
+	RingBuf<char*> produce_rb;
 	bool mStdinMode;
 	bool mHasNoLineBreakAtEnd;
+	size_t mBufReadLength;
+	size_t mStringProcessedLength;
+	char *mBufLarge;
+	bool mNoLineLeftInRingBuf;
 
 };
 

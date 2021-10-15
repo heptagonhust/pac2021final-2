@@ -2,7 +2,8 @@
 #include "util.h"
 #include <string.h>
 
-#define FQ_BUF_SIZE (1<<20)
+#define FQ_BUF_SIZE (1ll<<35)
+#define FQ_BUF_SIZE_ONCE (1<<25)
 
 FastqReader::FastqReader(string filename, bool hasQuality, bool phred64){
 	mFilename = filename;
@@ -12,37 +13,70 @@ FastqReader::FastqReader(string filename, bool hasQuality, bool phred64){
 	mStdinMode = false;
 	mPhred64 = phred64;
 	mHasQuality = hasQuality;
-	mBuf = new char[FQ_BUF_SIZE];
-	mBufDataLen = 0;
-	mBufUsedLen = 0;
+	mBufLarge = new char[FQ_BUF_SIZE];
+	mReadFinished = false;
 	mHasNoLineBreakAtEnd = false;
+	mStringProcessedLength = 0;
+	mNoLineLeftInRingBuf = false;
 	init();
 }
 
 FastqReader::~FastqReader(){
 	close();
-	delete mBuf;
+	delete mBufLarge;
 }
 
 bool FastqReader::hasNoLineBreakAtEnd() {
 	return mHasNoLineBreakAtEnd;
 }
 
-void FastqReader::readToBuf() {
+void FastqReader::readToBufLarge() {
 	if(mZipped) {
-		mBufDataLen = gzread(mZipFile, mBuf, FQ_BUF_SIZE);
-		if(mBufDataLen == -1) {
-			error_exit("Error to read gzip file: " + mFilename);
-			//cerr << "Error to read gzip file" << endl;
+		size_t mBufDataLen;
+		for(mBufReadLength = 0; mBufReadLength < FQ_BUF_SIZE; mBufReadLength += mBufDataLen) {
+			mBufDataLen = gzread(mZipFile, mBufLarge+mBufReadLength, FQ_BUF_SIZE_ONCE);
+			if(mBufDataLen == -1) {
+				error_exit("Error to read gzip file: " + mFilename);
+				//cerr << "Error to read gzip file" << endl;
+			}
 		}
 	} else {
-		mBufDataLen = fread(mBuf, 1, FQ_BUF_SIZE, mFile);
+		size_t mBufDataLen;
+		for(mBufReadLength = 0; mBufReadLength < FQ_BUF_SIZE; mBufReadLength += mBufDataLen) {
+			mBufDataLen = fread(mBufLarge+mBufReadLength, 1, FQ_BUF_SIZE_ONCE, mFile);
+			if(mBufDataLen == -1) {
+				error_exit("Error to read gzip file: " + mFilename);
+				//cerr << "Error to read gzip file" << endl;
+			}
+		}
 	}
-	mBufUsedLen = 0;
-
-	if(mBufDataLen < FQ_BUF_SIZE) {
-		if(mBuf[mBufDataLen-1] != '\n')
+	mReadFinished = true;
+	
+	/*
+	if(mBufReadLength < FQ_BUF_SIZE) {
+		if(mBufLarge[mBufDataLen-1] != '\n')
 			mHasNoLineBreakAtEnd = true;
+	}
+	*/
+}
+
+void FastqReader::stringProcess() {
+	char* ptr = &mBufLarge[0];
+	char** rb_item = nullptr;
+	while (!mReadFinished) {
+		while (mStringProcessedLength < mBufReadLength) {
+			if (*ptr == '\n' || *ptr == '\r') {
+				*ptr = '\0';
+				rb_item = produce_rb.enqueue_acquire();
+				int k = 1;
+				while (*(ptr+k) == '\n') {
+					k ++;
+				}
+				*rb_item = ptr + k;
+				produce_rb.enqueue();
+			}
+			mStringProcessedLength ++;
+		}
 	}
 }
 
@@ -63,7 +97,8 @@ void FastqReader::init(){
 		}
 		mZipped = false;
 	}
-	readToBuf();
+	std::thread readBuffer(std::bind(&FastqReader::readToBufLarge, this));
+	std::thread stringProcess(std::bind(&FastqReader::stringProcess, this));
 }
 
 void FastqReader::getBytes(size_t& bytesRead, size_t& bytesTotal) {
@@ -93,68 +128,14 @@ void FastqReader::clearLineBreaks(char* line) {
 }
 
 string FastqReader::getLine(){
-	static int c=0;
-	c++;
-	int copied = 0;
-
-	int start = mBufUsedLen;
-	int end = start;
-
-	while(end < mBufDataLen) {
-		if(mBuf[end] != '\r' && mBuf[end] != '\n')
-			end++;
-		else
-			break;
+	char** ptr = produce_rb.dequeue_acquire();
+	produce_rb.dequeue();
+	if(*ptr == nullptr) {
+		mNoLineLeftInRingBuf = true;
+		return string();
+	} else {
+		return string(*ptr, strlen(*ptr));
 	}
-
-	// this line well contained in this buf, or this is the last buf
-	if(end < mBufDataLen || mBufDataLen < FQ_BUF_SIZE) {
-		int len = end - start;
-		string line(mBuf+start, len);
-
-		// skip \n or \r
-		end++;
-		// handle \r\n
-		if(end < mBufDataLen-1 && mBuf[end-1]=='\r' && mBuf[end] == '\n')
-			end++;
-
-		mBufUsedLen = end;
-
-		return line;
-	}
-
-	// this line is not contained in this buf, we need to read new buf
-	string str(mBuf+start, mBufDataLen - start);
-
-	while(true) {
-		readToBuf();
-		start = 0;
-		end = 0;
-		while(end < mBufDataLen) {
-			if(mBuf[end] != '\r' && mBuf[end] != '\n')
-				end++;
-			else
-				break;
-		}
-		// this line well contained in this buf, we need to read new buf
-		if(end < mBufDataLen || mBufDataLen < FQ_BUF_SIZE) {
-			int len = end - start;
-			str.append(mBuf+start, len);
-
-			// skip \n or \r
-			end++;
-			// handle \r\n
-			if(end < mBufDataLen-1 && mBuf[end] == '\n')
-				end++;
-
-			mBufUsedLen = end;
-			return str;
-		}
-		// even this new buf is not enough, although impossible
-		str.append(mBuf+start, mBufDataLen);
-	}
-
-	return string();
 }
 
 bool FastqReader::eof() {
@@ -171,13 +152,9 @@ Read* FastqReader::read(){
 			return NULL;
 	}
 
-	if(mBufUsedLen >= mBufDataLen && eof()) {
-		return NULL;
-	}
-
 	string name = getLine();
 	// name should start with @
-	while((name.empty() && !(mBufUsedLen >= mBufDataLen && eof())) || (!name.empty() && name[0]!='@')){
+	while((name.empty() && !mNoLineLeftInRingBuf) || (!name.empty() && name[0]!='@')){
 		name = getLine();
 	}
 
