@@ -18,7 +18,11 @@ FastqReader::FastqReader(string filename, bool hasQuality, bool phred64){
 	mHasNoLineBreakAtEnd = false;
 	mStringProcessedLength = 0;
 	mNoLineLeftInRingBuf = false;
+	produce_rb = new RingBuf<char*>(1ll<<20);
+	getlineCounter = 0;
+	returnCounter = 0;
 	init();
+	
 }
 
 FastqReader::~FastqReader(){
@@ -35,6 +39,10 @@ void FastqReader::readToBufLarge() {
 		size_t mBufDataLen;
 		for(mBufReadLength = 0; mBufReadLength < FQ_BUF_SIZE; mBufReadLength += mBufDataLen) {
 			mBufDataLen = gzread(mZipFile, mBufLarge+mBufReadLength, FQ_BUF_SIZE_ONCE);
+			// stringProcess();
+			if(mBufDataLen == 0) {
+				break;
+			}
 			if(mBufDataLen == -1) {
 				error_exit("Error to read gzip file: " + mFilename);
 				//cerr << "Error to read gzip file" << endl;
@@ -44,6 +52,9 @@ void FastqReader::readToBufLarge() {
 		size_t mBufDataLen;
 		for(mBufReadLength = 0; mBufReadLength < FQ_BUF_SIZE; mBufReadLength += mBufDataLen) {
 			mBufDataLen = fread(mBufLarge+mBufReadLength, 1, FQ_BUF_SIZE_ONCE, mFile);
+			if(mBufDataLen == 0) {
+				break;
+			}
 			if(mBufDataLen == -1) {
 				error_exit("Error to read gzip file: " + mFilename);
 				//cerr << "Error to read gzip file" << endl;
@@ -51,32 +62,33 @@ void FastqReader::readToBufLarge() {
 		}
 	}
 	mReadFinished = true;
-	
-	/*
-	if(mBufReadLength < FQ_BUF_SIZE) {
-		if(mBufLarge[mBufDataLen-1] != '\n')
-			mHasNoLineBreakAtEnd = true;
-	}
-	*/
+	stringProcess();
 }
 
 void FastqReader::stringProcess() {
 	char* ptr = &mBufLarge[0];
 	char** rb_item = nullptr;
+	// rb_item = produce_rb->enqueue_acquire();
+	// *rb_item = &mBufLarge[0];
+	// produce_rb->enqueue();
+	char *old = nullptr;
 	while (!mReadFinished || mStringProcessedLength < mBufReadLength) {
-		int k = 1;
-		if (*ptr == '\n' || *ptr == '\r') {
-			*ptr = '\0';
-			rb_item = produce_rb.enqueue_acquire();
-			while (*(ptr+k) == '\n') {
-				k ++;
-			}
-			*rb_item = ptr + k;
-			produce_rb.enqueue();
+		rb_item = produce_rb->enqueue_acquire();
+		*rb_item = ptr;
+		produce_rb->enqueue();
+		while(*ptr != '\n' && *ptr != '\r' && mStringProcessedLength < mBufReadLength) {
+			ptr ++;
+			mStringProcessedLength ++;
 		}
-		ptr += k;
-		mStringProcessedLength += k;
+		while((*ptr == '\n' || *ptr == '\r') && mStringProcessedLength < mBufReadLength) {
+			*ptr = '\0';
+			ptr ++;
+			mStringProcessedLength ++;
+		}
 	}
+	rb_item = produce_rb->enqueue_acquire();
+	*rb_item = nullptr;
+	produce_rb->enqueue();
 }
 
 void FastqReader::init(){
@@ -98,8 +110,8 @@ void FastqReader::init(){
 	}
 	std::thread readBuffer(std::bind(&FastqReader::readToBufLarge, this));
 	readBuffer.detach();
-	std::thread stringProcess(std::bind(&FastqReader::stringProcess, this));
-	stringProcess.detach();
+	//std::thread stringProcess(std::bind(&FastqReader::stringProcess, this));
+	//stringProcess.detach();
 }
 
 void FastqReader::getBytes(size_t& bytesRead, size_t& bytesTotal) {
@@ -129,13 +141,21 @@ void FastqReader::clearLineBreaks(char* line) {
 }
 
 string FastqReader::getLine(){
-	char** ptr = produce_rb.dequeue_acquire();
-	produce_rb.dequeue();
+	getlineCounter ++;
+	//cout << "in getline: " << getlineCounter << endl;
+	char** ptr = produce_rb->dequeue_acquire();
 	if(*ptr == nullptr) {
+		produce_rb->dequeue();
 		mNoLineLeftInRingBuf = true;
+		returnCounter ++;
+		//cout << "nullptr: " << returnCounter << endl;
 		return string();
 	} else {
-		return string(*ptr, strlen(*ptr));
+		string ret = string(*ptr, strlen(*ptr));
+		produce_rb->dequeue();
+		returnCounter++;
+		//cout << "return ret: " << returnCounter << endl;
+		return ret;
 	}
 }
 
@@ -152,6 +172,9 @@ Read* FastqReader::read(){
 		if (mZipFile == NULL)
 			return NULL;
 	}
+
+	if (mNoLineLeftInRingBuf)
+		return NULL;
 
 	string name = getLine();
 	// name should start with @

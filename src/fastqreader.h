@@ -47,13 +47,15 @@ private:
 	bool mHasQuality;
 	bool mPhred64;
 	bool mReadFinished;
-	RingBuf<char*> produce_rb;
+	RingBuf<char*> *produce_rb;
 	bool mStdinMode;
 	bool mHasNoLineBreakAtEnd;
 	size_t mBufReadLength;
 	size_t mStringProcessedLength;
 	char *mBufLarge;
 	bool mNoLineLeftInRingBuf;
+	size_t getlineCounter;
+	size_t returnCounter;
 
 };
 
