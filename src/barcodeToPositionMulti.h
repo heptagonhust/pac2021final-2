@@ -31,8 +31,8 @@ private:
 	void destroyPackRepository();
 	void producePack(ReadPairPack* pack);
 	void consumePack(Result* result);
-	void producerTaskLeft(RingBufPair *rb);
-	void producerTaskRight(RingBufPair *rb);
+	void producerTaskLeft(RingBufPair *rb, FastqReader *reader);
+	void producerTaskRight(RingBufPair *rb, FastqReader *reader);
 	void consumerTask(int thread_id, RingBufPair *rb, Result* result);
 	void writeTask(WriterThread* config);
 	
@@ -49,6 +49,8 @@ private:
 	WriterThread* mWriter;
 	WriterThread* mUnmappedWriter;
 	bool filterFixedSequence = false;
+	FastqReader* left_reader;
+	FastqReader* right_reader;
 };
 
 #endif

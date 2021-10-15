@@ -8,6 +8,10 @@ BarcodeToPositionMulti::BarcodeToPositionMulti(Options* opt)
 	mWriter = NULL;
 	mUnmappedWriter = NULL;
 	bool isSeq500 = opt->isSeq500;
+
+	left_reader = new FastqReader(mOptions->transBarcodeToPos.in1);
+	right_reader = new FastqReader(mOptions->transBarcodeToPos.in2);
+
 	mbpmap = new BarcodePositionMap(opt);
 	//barcodeProcessor = new BarcodeProcessor(opt, &mbpmap->bpmap);
 	if (!mOptions->transBarcodeToPos.fixedSequence.empty() || !mOptions->transBarcodeToPos.fixedSequenceFile.empty()) {
@@ -29,8 +33,10 @@ bool BarcodeToPositionMulti::process()
 	initOutput();
 	RingBufPair pack_ringbufs[mOptions->thread];
 	
-	std::thread producerLeft(std::bind(&BarcodeToPositionMulti::producerTaskLeft, this, &pack_ringbufs[0]));
-	std::thread producerRight(std::bind(&BarcodeToPositionMulti::producerTaskRight, this, &pack_ringbufs[0]));
+	std::thread producerLeft(std::bind(
+		&BarcodeToPositionMulti::producerTaskLeft, this, &pack_ringbufs[0], left_reader));
+	std::thread producerRight(std::bind(
+		&BarcodeToPositionMulti::producerTaskRight, this, &pack_ringbufs[0], right_reader));
 
 	Result** results = new Result*[mOptions->thread];
 	BarcodeProcessor** barcodeProcessors = new BarcodeProcessor*[mOptions->thread];
@@ -174,21 +180,20 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 	return true;
 }
 
-void BarcodeToPositionMulti::producerTaskLeft(RingBufPair *rb) {
+void BarcodeToPositionMulti::producerTaskLeft(RingBufPair *rb, FastqReader *reader) {
 	if (mOptions->verbose)
 		loginfo("start to load data");
 	
 	bool mInterleaved = false;
 	assert(mInterleaved == false);
 
-	FastqReader reader(mOptions->transBarcodeToPos.in1);
 	int count = 0;
 
 	int thread_id = 0;
 	int num_threads = mOptions->thread;
 	ReadPairPack* pack = rb[thread_id].enqueue_acquire_left();
 	while (true) {
-		Read* read = reader.read();
+		Read* read = reader->read();
 		pack->data[count].mLeft = read;
 
 		if (!read) {
@@ -224,18 +229,17 @@ void BarcodeToPositionMulti::producerTaskLeft(RingBufPair *rb) {
 	}
 }
 
-void BarcodeToPositionMulti::producerTaskRight(RingBufPair *rb) {
+void BarcodeToPositionMulti::producerTaskRight(RingBufPair *rb, FastqReader *reader) {
 	bool mInterleaved = false;
 	assert(mInterleaved == false);
 
-	FastqReader reader(mOptions->transBarcodeToPos.in2);
 	int count = 0;
 
 	int thread_id = 0;
 	int num_threads = mOptions->thread;
 	ReadPairPack* pack = rb[thread_id].enqueue_acquire_right();
 	while (true) {
-		Read* read = reader.read();
+		Read* read = reader->read();
 		pack->data[count].mRight = read;
 
 		if (!read) {

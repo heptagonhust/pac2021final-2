@@ -65,17 +65,18 @@ void FastqReader::stringProcess() {
 	char** rb_item = nullptr;
 	while (!mReadFinished) {
 		while (mStringProcessedLength < mBufReadLength) {
+			int k = 1;
 			if (*ptr == '\n' || *ptr == '\r') {
 				*ptr = '\0';
 				rb_item = produce_rb.enqueue_acquire();
-				int k = 1;
 				while (*(ptr+k) == '\n') {
 					k ++;
 				}
 				*rb_item = ptr + k;
 				produce_rb.enqueue();
 			}
-			mStringProcessedLength ++;
+			ptr += k;
+			mStringProcessedLength += k;
 		}
 	}
 }
