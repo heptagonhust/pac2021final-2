@@ -1,9 +1,10 @@
 #include "fastqreader.h"
 #include "util.h"
 #include <string.h>
+#include <string_view>
 
-#define FQ_BUF_SIZE (1ll<<35)
-#define FQ_BUF_SIZE_ONCE (1<<29)
+#define FQ_BUF_SIZE (1ll<<30)
+#define FQ_BUF_SIZE_ONCE (1<<25)
 
 FastqReader::FastqReader(string filename, bool hasQuality, bool phred64){
 	mFilename = filename;
@@ -172,14 +173,14 @@ void FastqReader::clearLineBreaks(char* line) {
 	}
 }
 
-string FastqReader::getLine(){
+string_view FastqReader::getLine(){
 	char** ptr = produce_rb->dequeue_acquire();
 	if(*ptr == nullptr) {
 		produce_rb->dequeue();
 		mNoLineLeftInRingBuf = true;
-		return string();
+		return string_view{};
 	} else {
-		string ret = string(*ptr, strlen(*ptr));
+		string_view ret {*ptr, std::strlen(*ptr)};
 		produce_rb->dequeue();
 		return ret;
 	}
@@ -202,7 +203,7 @@ Read* FastqReader::read(){
 	if (mNoLineLeftInRingBuf)
 		return NULL;
 
-	string name = getLine();
+	string_view name = getLine();
 	// name should start with @
 	while((name.empty() && !mNoLineLeftInRingBuf) || (!name.empty() && name[0]!='@')){
 		name = getLine();
@@ -211,28 +212,27 @@ Read* FastqReader::read(){
 	if(name.empty())
 		return NULL;
 
-	string sequence = getLine();
-	string strand = getLine();
+	string_view sequence = getLine();
+	string_view strand = getLine();
 
 	// WAR for FQ with no quality
-	if (!mHasQuality){
-		string quality = string(sequence.length(), 'K');
-		return new Read(name, sequence, strand, quality, mPhred64);
+	// if (!mHasQuality){
+	// 	string quality = string(sequence.length(), 'K');
+	// 	return new Read(name, sequence, strand, quality, mPhred64);
+	// }
+	// else {
+	assert(mHasQuality);
+	string_view quality = getLine();
+	if(quality.length() != sequence.length()) {
+		cerr << "ERROR: sequence and quality have different length:" << endl;
+		cerr << name << endl;
+		cerr << sequence << endl;
+		cerr << strand << endl;
+		cerr << quality << endl;
+		return NULL;
 	}
-	else {
-		string quality = getLine();
-		if(quality.length() != sequence.length()) {
-			cerr << "ERROR: sequence and quality have different length:" << endl;
-			cerr << name << endl;
-			cerr << sequence << endl;
-			cerr << strand << endl;
-			cerr << quality << endl;
-			return NULL;
-		}
-		return new Read(name, sequence, strand, quality, mPhred64);
-	}
-
-	return NULL;
+	return new Read(name, sequence, strand, quality, mPhred64);
+	// }
 }
 
 void FastqReader::close(){

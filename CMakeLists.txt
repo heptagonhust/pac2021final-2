@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.2)
 set(PROJECT_NAME ST_BarcodeMap-0.0.1)
 project(${PROJECT_NAME})
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 find_library(ZSTD_LIB zstd REQUIRED)
 find_path(ZSTD_INC zstd.h REQUIRED)

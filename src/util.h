@@ -177,21 +177,21 @@ inline char complement(char base) {
 	}
 }
 
-inline string reverse(const string& str) {
-	string ret(str.length(), 0);
-	for (int pos = 0; pos < str.length(); pos++) {
-		ret[pos] = str[str.length() - pos - 1];
-	}
-	return ret;
-}
+// inline string reverse(const string& str) {
+// 	string ret(str.length(), 0);
+// 	for (int pos = 0; pos < str.length(); pos++) {
+// 		ret[pos] = str[str.length() - pos - 1];
+// 	}
+// 	return ret;
+// }
 
-inline string reverseComplement(const string& str) {
-	string rc(str.length(), 0);
-	for (int pos = 0; pos < str.length(); pos++) {
-		rc[pos] = complement(str[str.length() - pos - 1]);
-	}
-	return rc;
-}
+// inline string reverseComplement(const string& str) {
+// 	string rc(str.length(), 0);
+// 	for (int pos = 0; pos < str.length(); pos++) {
+// 		rc[pos] = complement(str[str.length() - pos - 1]);
+// 	}
+// 	return rc;
+// }
 
 /*
 			keep this 2 bits
@@ -201,7 +201,8 @@ inline string reverseComplement(const string& str) {
 	G		71	01000|11|1	3
 	T		84	01010|10|0	2
 */
-inline uint64 seqEncode(const char* sequence, const int& seqStart, const int& seqLen, bool isRC=false) {
+inline uint64 seqEncode(string_view sequence, const int& seqStart, const int& seqLen, bool isRC=false) {
+	// string_view OK
 	uint64 n = 0;
 	uint64  k = 0;
 	for (int i = seqStart; i < seqLen; i++) {
@@ -227,10 +228,10 @@ inline string seqDecode(const uint64& seqInt, const int& seqLen) {
 	return seqs;	
 }
 
-inline uint64 getPolyTint(const int& seqLen){
-	char ployT[] = "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
-	return seqEncode(ployT, 0, seqLen);
-}
+// inline uint64 getPolyTint(const int& seqLen){
+// 	char ployT[] = "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
+// 	return seqEncode(ployT, 0, seqLen);
+// }
 
 inline int possibleMis(int bl,  int mismatch) {
 	switch (mismatch) {

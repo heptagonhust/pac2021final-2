@@ -34,7 +34,7 @@ public:
 private:
 	void init();
 	void close();
-	string getLine();
+	string_view getLine();
 	void clearLineBreaks(char* line);
 	void readToBufLarge();
 	void stringProcess();

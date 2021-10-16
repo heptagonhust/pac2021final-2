@@ -1,7 +1,7 @@
 #ifndef BARCODETOPOSITIONMULTI_H
 #define BARCODETOPOSITIONMULTI_H
 
-#include <string>
+#include <cstring>
 #include <unordered_map>
 #include <atomic>
 #include <thread>
@@ -18,6 +18,34 @@
 
 using namespace std;
 
+const int max_length_char_buffer = 1ll<<12;
+
+struct BufferedChar {
+	char *str;
+	size_t length;
+	BufferedChar() {
+		str = new char[max_length_char_buffer];
+		length = 0;
+		str[0] = '\0';
+	}
+	~BufferedChar() {
+		delete [] str;
+	}
+	void appendThenFree(const char * source) {
+		char *dest = str + length;
+		const char *toFree = source;
+    while (*source != '\0')
+    {
+				length++;
+				assert(length < max_length_char_buffer);
+        *dest = *source;
+        dest++;
+        source++;
+    }
+    *dest = '\0';
+		delete [] toFree;
+	}
+};
 class BarcodeToPositionMulti {
 public:
 	BarcodeToPositionMulti(Options* opt);

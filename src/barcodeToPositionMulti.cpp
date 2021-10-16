@@ -134,8 +134,8 @@ void BarcodeToPositionMulti::closeOutput()
 
 bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 {
-	string outstr;
-	string unmappedOut;
+	BufferedChar outstr;
+	BufferedChar unmappedOut;
 	bool hasPosition;
 	bool fixedFiltered;
 	const int count = min(pack->count_right, pack->count_left);
@@ -156,10 +156,10 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 		}
 		hasPosition = result->mBarcodeProcessor->process(or1, or2);
 		if (hasPosition) {
-			outstr += or2->toString();
+			outstr.appendThenFree(or2->toNewCharPointer());
 		}
 		else if (mUnmappedWriter) {
-			unmappedOut += or2->toString();
+			unmappedOut.appendThenFree(or2->toNewCharPointer());
 		}
 		pair->mLeft = NULL;
 		pair->mRight = NULL;
@@ -168,12 +168,12 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 	}
 
 	mOutputMtx.lock();
-	if (mUnmappedWriter && !unmappedOut.empty()) {
+	if (mUnmappedWriter && unmappedOut.length != 0) {
 		//write reads that can't be mapped to the slide
-		mUnmappedWriter->input(unmappedOut.c_str(), unmappedOut.size());
+		mUnmappedWriter->input(unmappedOut.str, unmappedOut.length);
 	}
-	if (mWriter && !outstr.empty()) {
-		mWriter->input(outstr.c_str(), outstr.size());
+	if (mWriter && outstr.length != 0) {
+		mWriter->input(outstr.str, outstr.length);
 	}
 	mOutputMtx.unlock();
 
