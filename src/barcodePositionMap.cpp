@@ -139,6 +139,13 @@ void BarcodePositionMap::loadbpmap()
 			rangeRefresh(position);
 			//cout << "barcode: " << barcodeInt << " position: " << position.x << " " << position.y <<endl;
 		}
+		cout<<"bpmap2="<<bpmap.size()<<endl;
+		fstream file;
+		file.open("map.key", std::ios::out | std::ios::binary);
+		for(auto it = bpmap.begin(); it != bpmap.end(); ++it) {
+		    file.write( reinterpret_cast<const char *>(&(it->first)), sizeof(int64));
+		}
+		file.close();
 		//cout << "bpmap load suceessfully." << endl;
 		mapReader.close();
 	}
