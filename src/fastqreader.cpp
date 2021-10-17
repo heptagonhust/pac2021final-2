@@ -62,7 +62,7 @@ void FastqReader::readToBufLarge() {
 		}
 	}
 	mReadFinished = true;
-	stringProcess();
+	//stringProcess();
 }
 
 void FastqReader::stringProcess() {
@@ -71,11 +71,14 @@ void FastqReader::stringProcess() {
 	// rb_item = produce_rb->enqueue_acquire();
 	// *rb_item = &mBufLarge[0];
 	// produce_rb->enqueue();
-	char *old = nullptr;
+	bool passn = true;
 	while (!mReadFinished || mStringProcessedLength < mBufReadLength) {
-		rb_item = produce_rb->enqueue_acquire();
-		*rb_item = ptr;
-		produce_rb->enqueue();
+		if(passn) {
+			rb_item = produce_rb->enqueue_acquire();
+			*rb_item = ptr;
+			produce_rb->enqueue();
+			passn = false;
+		}
 		while(*ptr != '\n' && *ptr != '\r' && mStringProcessedLength < mBufReadLength) {
 			ptr ++;
 			mStringProcessedLength ++;
@@ -84,6 +87,7 @@ void FastqReader::stringProcess() {
 			*ptr = '\0';
 			ptr ++;
 			mStringProcessedLength ++;
+			passn = true;
 		}
 	}
 	rb_item = produce_rb->enqueue_acquire();
@@ -110,8 +114,8 @@ void FastqReader::init(){
 	}
 	std::thread readBuffer(std::bind(&FastqReader::readToBufLarge, this));
 	readBuffer.detach();
-	//std::thread stringProcess(std::bind(&FastqReader::stringProcess, this));
-	//stringProcess.detach();
+	std::thread stringProcess(std::bind(&FastqReader::stringProcess, this));
+	stringProcess.detach();
 }
 
 void FastqReader::getBytes(size_t& bytesRead, size_t& bytesTotal) {
