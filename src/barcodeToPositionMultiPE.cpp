@@ -148,60 +148,61 @@ void BarcodeToPositionMultiPE::closeOutput()
 
 bool BarcodeToPositionMultiPE::processPairEnd(ReadPairPack1* pack, Result* result)
 {
-	string outstr1;
-	string outstr2;
-	string unmappedOut1;
-	string unmappedOut2;
-	bool hasPosition;
-	bool fixedFiltered;
-	for (int p = 0; p < pack->count; p++) {
-		result->mTotalRead++;
-		ReadPair* pair = pack->data[p];
-		Read* or1 = pair->mLeft;
-		Read* or2 = pair->mRight;
-		if (filterFixedSequence) {
-			fixedFiltered = fixedFilter->filter(or1, or2, result);
-			if (fixedFiltered) {
-				delete pair;
-				continue;
-			}
-		}
-		hasPosition = result->mBarcodeProcessor->process(or1, or2);
-		if (hasPosition) {
-			outstr1 += or1->toString();
-			outstr2 += or2->toString();
-		}
-		else if (mUnmappedWriter1 && mUnmappedWriter2) {
-			unmappedOut1 += or1->toString();
-			unmappedOut2 += or2->toString();
-		}
-		delete pair;
-	}
-	mOutputMtx.lock();
-	if (mUnmappedWriter1 && mUnmappedWriter2 && (!unmappedOut1.empty() || !unmappedOut2.empty())) {
-		//write reads that can't be mapped to the slide
-		char* udata1 = new char[unmappedOut1.size()];
-		memcpy(udata1, unmappedOut1.c_str(), unmappedOut1.size());
-		mUnmappedWriter1->input(udata1, unmappedOut1.size());
-
-		char* udata2 = new char[unmappedOut2.size()];
-		memcpy(udata2, unmappedOut2.c_str(), unmappedOut2.size());
-		mUnmappedWriter2->input(udata2, unmappedOut2.size());
-	}
-	
-	if (mWriter1 && mWriter2 && (!outstr1.empty() || !outstr2.empty())) {
-		char* data1 = new char[outstr1.size()];
-		memcpy(data1, outstr1.c_str(), outstr1.size());
-		mWriter1->input(data1, outstr1.size());
-
-		char* data2 = new char[outstr2.size()];
-		memcpy(data2, outstr2.c_str(), outstr2.size());
-		mWriter2->input(data2, outstr2.size());
-	}
-	mOutputMtx.unlock();
-	delete pack->data;
-	delete pack;
 	return true;
+	// string outstr1;
+	// string outstr2;
+	// string unmappedOut1;
+	// string unmappedOut2;
+	// bool hasPosition;
+	// bool fixedFiltered;
+	// for (int p = 0; p < pack->count; p++) {
+	// 	result->mTotalRead++;
+	// 	ReadPair* pair = pack->data[p];
+	// 	Read* or1 = pair->mLeft;
+	// 	Read* or2 = pair->mRight;
+	// 	if (filterFixedSequence) {
+	// 		fixedFiltered = fixedFilter->filter(or1, or2, result);
+	// 		if (fixedFiltered) {
+	// 			delete pair;
+	// 			continue;
+	// 		}
+	// 	}
+	// 	hasPosition = result->mBarcodeProcessor->process(or1, or2);
+	// 	if (hasPosition) {
+	// 		outstr1 += or1->toString();
+	// 		outstr2 += or2->toString();
+	// 	}
+	// 	else if (mUnmappedWriter1 && mUnmappedWriter2) {
+	// 		unmappedOut1 += or1->toString();
+	// 		unmappedOut2 += or2->toString();
+	// 	}
+	// 	delete pair;
+	// }
+	// mOutputMtx.lock();
+	// if (mUnmappedWriter1 && mUnmappedWriter2 && (!unmappedOut1.empty() || !unmappedOut2.empty())) {
+	// 	//write reads that can't be mapped to the slide
+	// 	char* udata1 = new char[unmappedOut1.size()];
+	// 	memcpy(udata1, unmappedOut1.c_str(), unmappedOut1.size());
+	// 	mUnmappedWriter1->input(udata1, unmappedOut1.size());
+
+	// 	char* udata2 = new char[unmappedOut2.size()];
+	// 	memcpy(udata2, unmappedOut2.c_str(), unmappedOut2.size());
+	// 	mUnmappedWriter2->input(udata2, unmappedOut2.size());
+	// }
+	
+	// if (mWriter1 && mWriter2 && (!outstr1.empty() || !outstr2.empty())) {
+	// 	char* data1 = new char[outstr1.size()];
+	// 	memcpy(data1, outstr1.c_str(), outstr1.size());
+	// 	mWriter1->input(data1, outstr1.size());
+
+	// 	char* data2 = new char[outstr2.size()];
+	// 	memcpy(data2, outstr2.c_str(), outstr2.size());
+	// 	mWriter2->input(data2, outstr2.size());
+	// }
+	// mOutputMtx.unlock();
+	// delete pack->data;
+	// delete pack;
+	// return true;
 }
 
 void BarcodeToPositionMultiPE::initPackRepositoey()
@@ -350,14 +351,8 @@ void BarcodeToPositionMultiPE::consumerTask(Result* result) {
 }
 
 void BarcodeToPositionMultiPE::writeTask(WriterThread* config) {
-	while (true) {
-		if (config->isCompleted()) {
-			config->output();
-			break;
-		}
-		config->output();
-	}
 
+	config->outputTask();
 	if (mOptions->verbose) {
 		string msg = config->getFilename() + " writer finished";
 		loginfo(msg);

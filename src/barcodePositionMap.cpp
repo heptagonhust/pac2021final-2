@@ -134,7 +134,7 @@ void BarcodePositionMap::loadbpmap()
 				position.x = std::stoi(splitLine[3]);
 				position.y = std::stoi(splitLine[4]);
 			}
-			barcodeInt = seqEncode(splitLine[0].c_str(), barcodeStart, barcodeLen);
+			barcodeInt = seqEncode(string_view{splitLine[0]}, barcodeStart, barcodeLen);
 			bpmap[barcodeInt] = position;
 			rangeRefresh(position);
 			//cout << "barcode: " << barcodeInt << " position: " << position.x << " " << position.y <<endl;

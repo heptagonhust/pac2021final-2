@@ -62,8 +62,10 @@ void BarcodeListMerge::dumpMergedBarcodeList(string& outfile){
     ofstream outDnb;
     if (ends_with(outfile, ".bin")){
         outDnb.open(outfile, ios::binary);
-        boost::archive::binary_oarchive oa(outDnb);
-        oa << mergedDnbMap;
+        assert(false);
+        // Boost 17.7 with C++ 17 may not support this methods.
+        // boost::archive::binary_oarchive oa(outDnb);
+        // oa << mergedDnbMap;
     }else{
         outDnb.open(outfile);
         for (auto dnbIter = mergedDnbMap.begin(); dnbIter != mergedDnbMap.end(); dnbIter++){

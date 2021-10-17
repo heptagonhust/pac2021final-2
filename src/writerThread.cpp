@@ -1,55 +1,56 @@
 #include "writerThread.h"
 
 WriterThread::WriterThread(string filename, int compressionLevel)
+	: rb(128)
 {
 	compression = compressionLevel;
 
 	mWriter1 = NULL;
 
-	mInputCounter = 0;
-	mOutputCounter = 0;
 	mInputCompleted = false;
 	mFilename = filename;
 
-	mRingBuffer = new char* [PACK_NUM_LIMIT];
-	memset(mRingBuffer, 0, sizeof(char*) * PACK_NUM_LIMIT);
-	mRingBufferSizes = new size_t[PACK_NUM_LIMIT];
-	memset(mRingBufferSizes, 0, sizeof(size_t) * PACK_NUM_LIMIT);
 	initWriter(filename);
 }
 
 WriterThread::~WriterThread()
 {
 	cleanup();
-	delete mRingBuffer;
-}
-
-bool WriterThread::isCompleted() {
-	return mInputCompleted && (mOutputCounter == mInputCounter);
 }
 
 bool WriterThread::setInputCompleted() {
-	mInputCompleted = true;
+	OutputStrPack *pack = rb.enqueue_acquire();
+	pack->size = 0;
+		
+	rb.enqueue();
 	return true;
 }
 
-void WriterThread::output() {
-	if (mOutputCounter >= mInputCounter) {
-		usleep(100);
-	}
-	while (mOutputCounter < mInputCounter) {
-		mWriter1->write(mRingBuffer[mOutputCounter], mRingBufferSizes[mOutputCounter]);
-		delete mRingBuffer[mOutputCounter];
-		mRingBuffer[mOutputCounter] = NULL;
-		mOutputCounter++;
-		//cout << "Writer thread: " <<  mFilename <<  " mOutputCounter: " << mOutputCounter << " mInputCounter: " << mInputCounter << endl;
+void WriterThread::outputTask() {
+	while(true) {
+		OutputStrPack *pack = rb.dequeue_acquire();
+		if(pack->size == 0)
+			break;
+		
+		mWriter1->write(pack->data, pack->size);
+		rb.dequeue();
 	}
 }
 
-void WriterThread::input(char* data, size_t size) {
-	mRingBuffer[mInputCounter] = data;
-	mRingBufferSizes[mInputCounter] = size;
-	mInputCounter++;
+void WriterThread::input(const char* data, size_t size) {
+	size_t n_outputed = 0;
+	while(n_outputed < size) {
+		int n = size - n_outputed;
+		n = n < WRITER_OUTPUT_PACK_SIZE ? n : WRITER_OUTPUT_PACK_SIZE;
+
+		OutputStrPack *pack = rb.enqueue_acquire();
+
+		pack->size = n;
+		memcpy(pack->data, &data[n_outputed], n);
+
+		rb.enqueue();
+		n_outputed += n;
+	}
 }
 
 void WriterThread::cleanup() {
@@ -79,5 +80,6 @@ void WriterThread::initWriter(gzFile gzfile) {
 }
 
 long WriterThread::bufferLength() {
-	return mInputCounter - mOutputCounter;
+	assert(0);
+	return 0;
 }

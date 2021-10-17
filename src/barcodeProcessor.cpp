@@ -1,12 +1,14 @@
 #include "barcodeProcessor.h"
+#include <string_view>
 
 BarcodeProcessor::BarcodeProcessor(Options* opt, unordered_map<uint64, Position1>* mbpmap)
 {
+	// string_view OK
 	mOptions = opt;
 	bpmap = mbpmap;
 	mismatch = opt->transBarcodeToPos.mismatch;
 	barcodeLen = opt->barcodeLen;
-	polyTInt = seqEncode(polyT.c_str(), 0, barcodeLen, mOptions->rc);
+	polyTInt = seqEncode(string_view{polyT}, 0, barcodeLen, mOptions->rc);
 	misMaskGenerate();
 }
 
@@ -21,9 +23,10 @@ BarcodeProcessor::~BarcodeProcessor()
 
 bool BarcodeProcessor::process(Read* read1, Read* read2)
 {
+	// string_view OK
 	totalReads++;
-	string barcode;
-	string barcodeQ;
+	string_view barcode;
+	string_view barcodeQ;
 	if (mOptions->transBarcodeToPos.barcodeRead == 1){
 		barcode = read1->mSeq.mStr.substr(mOptions->barcodeStart, mOptions->barcodeLen);
 		barcodeQ = read1->mQuality.substr(mOptions->barcodeStart, mOptions->barcodeLen);
@@ -40,7 +43,7 @@ bool BarcodeProcessor::process(Read* read1, Read* read2)
 		mMapToSlideRead++ ;
 		bool umiPassFilter = true;
 		if (mOptions->transBarcodeToPos.umiStart >= 0 && mOptions->transBarcodeToPos.umiLen > 0){
-			pair<string, string> umi;
+			pair<string_view, string_view> umi;
 			if (mOptions->transBarcodeToPos.umiRead == 1){
 				getUMI(read1, umi);
 			}else{
@@ -49,19 +52,29 @@ bool BarcodeProcessor::process(Read* read1, Read* read2)
 			umiPassFilter = umiStatAndFilter(umi);
 			if (!mOptions->transBarcodeToPos.PEout){
 				addPositionToName(read2, position, &umi);
-			}else{
-				addPositionToNames(read1, read2, position, &umi);
 			}
+			assert(!mOptions->transBarcodeToPos.PEout);
+			// Comment this function to support type `string` transformation.
+			// else{
+			// 	addPositionToNames(read1, read2, position, &umi);
+			// }
 		}
 		else{
-			if (!mOptions->transBarcodeToPos.PEout){
-				addPositionToName(read2, position);
-			}else{
-				addPositionToNames(read1, read2, position);
-			}
+			assert(false);
+			// Comment this function to support type `string` transformation.
+			// if (!mOptions->transBarcodeToPos.PEout){
+			// 	addPositionToName(read2, position);
+			// }
+			// assert(!mOptions->transBarcodeToPos.PEout);
+
+			// Comment this function to support type `string` transformation.
+			// else{
+			// 	addPositionToNames(read1, read2, position);
+			// }
 		}
-		if(! mOptions->transBarcodeToPos.mappedDNBOutFile.empty())
-			addDNB(encodePosition(position->x, position->y));
+		// Comment this function to support type `string` transformation.
+		// if(! mOptions->transBarcodeToPos.mappedDNBOutFile.empty())
+		// 	addDNB(encodePosition(position->x, position->y));
 
 		return umiPassFilter;
 	}
@@ -69,56 +82,63 @@ bool BarcodeProcessor::process(Read* read1, Read* read2)
 
 }
 
-void BarcodeProcessor::addPositionToName(Read* r, Position1* position, pair<string, string>* umi)
+void BarcodeProcessor::addPositionToName(Read* r, Position1* position, pair<string_view, string_view>* umi)
 {
+	// string_view OK
 	string position_tag = positionToString(position);
 	int readTagPos = r->mName.find("/");
-	string readName;
-	if (readTagPos!=string::npos){
-		readName = r->mName.substr(0, readTagPos);
+
+	stringstream str;
+	if (readTagPos!=string_view::npos){
+		str << r->mName.substr(0, readTagPos);
 	}else{
-		readName = r->mName;
+		str << r->mName;
 	}
 	if (umi == NULL)
-		r->mName = readName + "|||CB:Z:" + position_tag;
+		assert(false);
+		// r->mName = readName + "|||CB:Z:" + position_tag;
 	else {
-		r->mName = readName + "|||CB:Z:" + position_tag + "|||UR:Z:" + umi->first+ "|||UY:Z:" + umi->second;
+		str << "|||CB:Z:" << position_tag << "|||UR:Z:" << umi->first << "|||UY:Z:" << umi->second;
+		string *nonVolatileBuf = new string{};
+		str >> *nonVolatileBuf;
+		r->mName = string_view{*nonVolatileBuf};
 	}
 }
 
-void BarcodeProcessor::addPositionToNames(Read* r1, Read* r2, Position1* position, pair<string, string>* umi){
-	string position_tag = positionToString(position);
-	int readTagPos = r1->mName.find("/");
-	string readName;
-	if (readTagPos!=string::npos){
-		readName = r1->mName.substr(0, readTagPos);
-	}else{
-		readName = r1->mName;
-	}
-	if (umi == NULL){
-		r1->mName = readName + "|||CB:Z:" + position_tag;
-		if (mOptions->transBarcodeToPos.barcodeRead == 1){
-			r1->trimBack(mOptions->barcodeStart);
-		}else{
-			r2->trimBack(mOptions->barcodeStart);
-		}
-		r2->mName = r1->mName;
-	}else{
-		r1->mName = readName + "|||CB:Z:" + position_tag + "|||UR:Z:" + umi->first+ "|||UY:Z:" + umi->second;
-		if (mOptions->transBarcodeToPos.umiRead == 1 && mOptions->transBarcodeToPos.barcodeRead == 1){
-			int trimStart = mOptions->barcodeStart > mOptions->transBarcodeToPos.umiStart ? mOptions->transBarcodeToPos.umiStart : mOptions->barcodeStart;
-			r1->trimBack(trimStart);
-		}else{
-			r2->trimBack(mOptions->barcodeStart);
-		}
-		r2->mName = r1->mName;
-	}
-}
+// void BarcodeProcessor::addPositionToNames(Read* r1, Read* r2, Position1* position, pair<string, string>* umi){
+// 	string position_tag = positionToString(position);
+// 	int readTagPos = r1->mName.find("/");
+// 	string readName;
+// 	if (readTagPos!=string::npos){
+// 		readName = r1->mName.substr(0, readTagPos);
+// 	}else{
+// 		readName = r1->mName;
+// 	}
+// 	if (umi == NULL){
+// 		r1->mName = readName + "|||CB:Z:" + position_tag;
+// 		if (mOptions->transBarcodeToPos.barcodeRead == 1){
+// 			r1->trimBack(mOptions->barcodeStart);
+// 		}else{
+// 			r2->trimBack(mOptions->barcodeStart);
+// 		}
+// 		r2->mName = r1->mName;
+// 	}else{
+// 		r1->mName = readName + "|||CB:Z:" + position_tag + "|||UR:Z:" + umi->first+ "|||UY:Z:" + umi->second;
+// 		if (mOptions->transBarcodeToPos.umiRead == 1 && mOptions->transBarcodeToPos.barcodeRead == 1){
+// 			int trimStart = mOptions->barcodeStart > mOptions->transBarcodeToPos.umiStart ? mOptions->transBarcodeToPos.umiStart : mOptions->barcodeStart;
+// 			r1->trimBack(trimStart);
+// 		}else{
+// 			r2->trimBack(mOptions->barcodeStart);
+// 		}
+// 		r2->mName = r1->mName;
+// 	}
+// }
 
-void BarcodeProcessor::getUMI(Read* r, pair<string, string>& umi, bool isRead2)
+void BarcodeProcessor::getUMI(Read* r, pair<string_view, string_view>& umi, bool isRead2)
 {
-	string umiSeq = r->mSeq.mStr.substr(mOptions->transBarcodeToPos.umiStart, mOptions->transBarcodeToPos.umiLen);
-	string umiQ = r->mQuality.substr(mOptions->transBarcodeToPos.umiStart, mOptions->transBarcodeToPos.umiLen);
+	// string_view OK
+	string_view umiSeq = r->mSeq.mStr.substr(mOptions->transBarcodeToPos.umiStart, mOptions->transBarcodeToPos.umiLen);
+	string_view umiQ = r->mQuality.substr(mOptions->transBarcodeToPos.umiStart, mOptions->transBarcodeToPos.umiLen);
 	umi.first = umiSeq;
 	umi.second = umiQ;
 	if (isRead2) {
@@ -159,6 +179,7 @@ long BarcodeProcessor::getBarcodeTypes()
 
 Position1* BarcodeProcessor::getPosition(uint64 barcodeInt)
 {
+	// string_view OK
 	unordered_map<uint64, Position1>::iterator iter = bpmap->find(barcodeInt);
 	if (iter!=bpmap->end()) {
 		overlapReads++;
@@ -177,11 +198,12 @@ Position1* BarcodeProcessor::getPosition(uint64 barcodeInt)
 	return nullptr;
 }
 
-Position1* BarcodeProcessor::getPosition(string& barcodeString)
+Position1* BarcodeProcessor::getPosition(string_view& barcodeString)
 {
+	// string_view OK
 	int Nindex = getNindex(barcodeString);
 	if (Nindex == -1) {
-		uint64 barcodeInt = seqEncode(barcodeString.c_str(), 0, barcodeLen);
+		uint64 barcodeInt = seqEncode(barcodeString, 0, barcodeLen);
 		if (barcodeInt == polyTInt) {
 			return nullptr;
 		}
@@ -198,6 +220,7 @@ Position1* BarcodeProcessor::getPosition(string& barcodeString)
 
 void BarcodeProcessor::misMaskGenerate()
 {
+	// string_view OK
 	misMaskLen = possibleMis(barcodeLen, mismatch);
 	misMaskLens = new int[mismatch];
 	for (int i=0; i< mismatch; i++){
@@ -302,6 +325,7 @@ string BarcodeProcessor::positionToString(Position1* position){
 
 unordered_map<uint64, Position1>::iterator BarcodeProcessor::getMisOverlap(uint64 barcodeInt)
 {
+	// string_view OK
 	uint64 misBarcodeInt;
 	int misCount = 0;
 	int misMaskIndex = 0;
@@ -329,11 +353,12 @@ unordered_map<uint64, Position1>::iterator BarcodeProcessor::getMisOverlap(uint6
 	return bpmap->end();
 }
 
-Position1* BarcodeProcessor::getNOverlap(string& barcodeString, uint8 Nindex)
+Position1* BarcodeProcessor::getNOverlap(string_view& barcodeString, uint8 Nindex)
 {
+	// string_view OK
 	//N has the same encode (11) with G
 	int misCount = 0;
-	uint64 barcodeInt = seqEncode(barcodeString.c_str(), 0, barcodeString.length());
+	uint64 barcodeInt = seqEncode(barcodeString, 0, barcodeString.length());
 	unordered_map<uint64, Position1>::iterator iter;
 	unordered_map<uint64, Position1>::iterator overlapIter;
 	iter = bpmap->find(barcodeInt);
@@ -359,8 +384,9 @@ Position1* BarcodeProcessor::getNOverlap(string& barcodeString, uint8 Nindex)
 	return nullptr;
 }
 
-int BarcodeProcessor::getNindex(string& barcodeString)
+int BarcodeProcessor::getNindex(string_view& barcodeString)
 {
+	// string_view OK
 	int Nindex = barcodeString.find("N");
 	if (Nindex == barcodeString.npos) {
 		return -1;
@@ -371,36 +397,37 @@ int BarcodeProcessor::getNindex(string& barcodeString)
 	return Nindex;
 }
 
-void BarcodeProcessor::addDNB(uint64 barcodeInt)
-{
-	if (mDNB.count(barcodeInt) > 0) {
-		mDNB[barcodeInt]++;
-	}
-	else {
-		mDNB[barcodeInt]++;
-	}
-}
+// void BarcodeProcessor::addDNB(uint64 barcodeInt)
+// {
+// 	if (mDNB.count(barcodeInt) > 0) {
+// 		mDNB[barcodeInt]++;
+// 	}
+// 	else {
+// 		mDNB[barcodeInt]++;
+// 	}
+// }
 
-bool BarcodeProcessor::barcodeStatAndFilter(pair<string, string>& barcode)
-{
-	for (int i = 0; i < barcodeLen; i++) {
-		if (barcode.second[i] >= q30) {
-			barcodeQ30++;
-			barcodeQ20++;
-			barcodeQ10++;
-		}
-		else if (barcode.second[i] >= q20) {
-			barcodeQ20++;
-			barcodeQ10++;
-		}else if (barcode.second[i] >= q10) {
-			barcodeQ10++;
-		}
-	}
-	return true;
-}
+// bool BarcodeProcessor::barcodeStatAndFilter(pair<string, string>& barcode)
+// {
+// 	for (int i = 0; i < barcodeLen; i++) {
+// 		if (barcode.second[i] >= q30) {
+// 			barcodeQ30++;
+// 			barcodeQ20++;
+// 			barcodeQ10++;
+// 		}
+// 		else if (barcode.second[i] >= q20) {
+// 			barcodeQ20++;
+// 			barcodeQ10++;
+// 		}else if (barcode.second[i] >= q10) {
+// 			barcodeQ10++;
+// 		}
+// 	}
+// 	return true;
+// }
 
-bool BarcodeProcessor::barcodeStatAndFilter(string& barcodeQ)
+bool BarcodeProcessor::barcodeStatAndFilter(string_view& barcodeQ)
 {
+	// string_view OK
 	for (int i = 0; i < barcodeLen; i++) {
 		if (barcodeQ[i] >= q30) {
 			barcodeQ30++;
@@ -417,8 +444,9 @@ bool BarcodeProcessor::barcodeStatAndFilter(string& barcodeQ)
 	return true;
 }
 
-bool BarcodeProcessor::umiStatAndFilter(pair<string, string>& umi)
+bool BarcodeProcessor::umiStatAndFilter(pair<string_view, string_view>& umi)
 {
+	// string_view OK
 	int q10BaseCount = 0;
 	for (int i = 0; i < mOptions->transBarcodeToPos.umiLen; i++) {
 		if (umi.second[i] >= q30) {
@@ -435,10 +463,10 @@ bool BarcodeProcessor::umiStatAndFilter(pair<string, string>& umi)
 			q10BaseCount++;
 		}
 	}
-	if (umi.first.find("N") != string::npos){
+	if (umi.first.find("N") != string_view::npos){
 		umiNFilterReads++;
 		return false;
-	}else if (seqEncode(umi.first.c_str(), 0, mOptions->transBarcodeToPos.umiLen) == 0){
+	}else if (seqEncode(umi.first, 0, mOptions->transBarcodeToPos.umiLen) == 0){
 		umiPloyAFilterReads++;
 		return false;
 	}else if (q10BaseCount>1){

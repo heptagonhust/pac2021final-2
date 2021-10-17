@@ -9,8 +9,17 @@
 #include "writer.h"
 #include <atomic>
 #include <mutex>
+#include "ringbuf.hpp"
 
 using namespace std;
+constexpr size_t WRITER_OUTPUT_PACK_SIZE = 512;
+struct OutputStrPack {
+	char data[WRITER_OUTPUT_PACK_SIZE];
+	size_t size;
+	OutputStrPack() {
+		size = 0;
+	}
+};
 
 class WriterThread {
 public:
@@ -24,8 +33,8 @@ public:
 	void cleanup();
 
 	bool isCompleted();
-	void output();
-	void input(char* data, size_t size);
+	void outputTask();
+	void input(const char* data, size_t size);
 	bool setInputCompleted();
 
 	long bufferLength();
@@ -41,10 +50,7 @@ private:
 
 	//for split output
 	bool mInputCompleted;
-	atomic_long mInputCounter;
-	atomic_long mOutputCounter;
-	char** mRingBuffer;
-	size_t* mRingBufferSizes;
+	RingBuf<OutputStrPack> rb;
 
 	mutex mtx;
 };

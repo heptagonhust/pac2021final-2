@@ -18,17 +18,17 @@ public:
 	FixedFilter(Options* opt);
 	~FixedFilter();
 	bool filter(Read* read1, Read* read2, Result* result);
-	bool filterBySequence(Read* read1, Read* read2, Result* result);
-	bool filterByPosSpecifySequence(Read* read1, Read* read2, Result* result, int posStart);
-	bool filterBySequences(Read* read1, Read* read2, Result* result, string& fixedSequence);
-	bool filterByPosSpecifySequences(Read* read1, Read* read2, Result* result, string& fixedSequence, int posStart);
-	bool filterByMultipleSequences(Read* read1, Read* read2, Result* result);
-	void getFxiedSequencesFromFile(string fixedSequenceFile);
+	// bool filterBySequence(Read* read1, Read* read2, Result* result);
+	// bool filterByPosSpecifySequence(Read* read1, Read* read2, Result* result, int posStart);
+	// bool filterBySequences(Read* read1, Read* read2, Result* result, string_view fixedSequence);
+	// bool filterByPosSpecifySequences(Read* read1, Read* read2, Result* result, string_view fixedSequence, int posStart);
+	// bool filterByMultipleSequences(Read* read1, Read* read2, Result* result);
+	// void getFxiedSequencesFromFile(string fixedSequenceFile);
 public:
 	Options* mOptions;
-	string fixedSequence;
-	string fixedSequenceRC;
-	map<string, int> fixedSequences;
+	// string_view fixedSequence;
+	// string_view fixedSequenceRC;
+	// map<string, int> fixedSequences;
 	int read1Length = 50;
 };
 

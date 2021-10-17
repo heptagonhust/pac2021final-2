@@ -1,7 +1,7 @@
 #ifndef BARCODETOPOSITIONMULTI_H
 #define BARCODETOPOSITIONMULTI_H
 
-#include <string>
+#include <cstring>
 #include <unordered_map>
 #include <atomic>
 #include <thread>
@@ -13,19 +13,39 @@
 #include "writerThread.h"
 #include "result.h"
 
+#include "ringbuf.hpp"
+#include "ringbuf_pair.h"
+
 using namespace std;
 
-typedef struct ReadPairPack {
-	ReadPair** data;
-	int count;
-}ReadPairPack;
+const int max_length_char_buffer = 1ll<<20;
 
-typedef struct ReadPairRepository {
-	ReadPairPack** packBuffer;
-	atomic_long readPos;
-	atomic_long writePos;
-}ReadPairRepository;
-
+struct BufferedChar {
+	char *str;
+	size_t length;
+	BufferedChar() {
+		str = new char[max_length_char_buffer];
+		length = 0;
+		str[0] = '\0';
+	}
+	~BufferedChar() {
+		delete [] str;
+	}
+	void appendThenFree(const char * source) {
+		char *dest = str + length;
+		const char *toFree = source;
+    while (*source != '\0')
+    {
+				length++;
+				assert(length < max_length_char_buffer);
+        *dest = *source;
+        dest++;
+        source++;
+    }
+    *dest = '\0';
+		delete [] toFree;
+	}
+};
 class BarcodeToPositionMulti {
 public:
 	BarcodeToPositionMulti(Options* opt);
@@ -39,8 +59,9 @@ private:
 	void destroyPackRepository();
 	void producePack(ReadPairPack* pack);
 	void consumePack(Result* result);
-	void producerTask();
-	void consumerTask(Result* result);
+	void producerTaskLeft(RingBufPair *rb, FastqReader *reader);
+	void producerTaskRight(RingBufPair *rb, FastqReader *reader);
+	void consumerTask(int thread_id, RingBufPair *rb, Result* result);
 	void writeTask(WriterThread* config);
 	
 public:
@@ -50,16 +71,14 @@ public:
 	//unordered_map<uint64, Position*> misBarcodeMap;
 
 private:
-	ReadPairRepository mRepo;
-	atomic_bool mProduceFinished;
-	atomic_int mFinishedThreads;
 	std::mutex mOutputMtx;
-	std::mutex mInputMutx;
 	gzFile mZipFile;
 	ofstream* mOutStream;
 	WriterThread* mWriter;
 	WriterThread* mUnmappedWriter;
 	bool filterFixedSequence = false;
+	FastqReader* left_reader;
+	FastqReader* right_reader;
 };
 
 #endif

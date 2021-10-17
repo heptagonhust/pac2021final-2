@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <string_view>
 #include <unordered_map>
 #include "read.h"
 #include "util.h"
@@ -23,26 +24,26 @@ public:
 	bool process(Read* read1, Read* read2);
 	void dumpDNBmap(string& dnbMapFile);
 private:
-	void addPositionToName(Read* r, Position1* position, pair<string, string>* umi = NULL);
-	void addPositionToNames(Read* r1, Read* r2, Position1* position, pair<string, string>* umi = NULL);
-	void  getUMI(Read* r, pair<string, string>& umi, bool isRead2=false);
+	void addPositionToName(Read* r, Position1* position, pair<string_view, string_view>* umi = NULL);
+	// void addPositionToNames(Read* r1, Read* r2, Position1* position, pair<string, string>* umi = NULL);
+	void  getUMI(Read* r, pair<string_view, string_view>& umi, bool isRead2=false);
 	void decodePosition(const uint32 codePos, pair<uint16, uint16>& decodePos);
 	void decodePosition(const uint64 codePos, pair<uint32, uint32>& decodePos);
 	uint32 encodePosition(int fovCol, int fovRow);
 	uint64 encodePosition(uint32 x, uint32 y);
 	long getBarcodeTypes();
 	Position1* getPosition(uint64 barcodeInt);
-	Position1* getPosition(string& barcodeString);
+	Position1* getPosition(string_view& barcodeString);
 	void misMaskGenerate();
 	string positionToString(Position1* position);
 	string positionToString(Position* position);
 	unordered_map<uint64, Position1>::iterator getMisOverlap(uint64 barcodeInt);
-	Position1* getNOverlap(string& barcodeString, uint8 Nindex);
-	int getNindex(string& barcodeString);
-	void addDNB(uint64 barcodeInt);
-	bool barcodeStatAndFilter(pair<string, string>& barcode);
-	bool barcodeStatAndFilter(string& barcodeQ);
-	bool umiStatAndFilter (pair<string, string>& umi);
+	Position1* getNOverlap(string_view& barcodeString, uint8 Nindex);
+	int getNindex(string_view& barcodeString);
+	// void addDNB(uint64 barcodeInt);
+	// bool barcodeStatAndFilter(pair<string, string>& barcode);
+	bool barcodeStatAndFilter(string_view& barcodeQ);
+	bool umiStatAndFilter (pair<string_view, string_view>& umi);
 private:
 	uint64* misMask;
 	int misMaskLen;
