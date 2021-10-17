@@ -18,7 +18,7 @@
 
 using namespace std;
 
-const int max_length_char_buffer = 1ll<<12;
+const int max_length_char_buffer = 1ll<<20;
 
 struct BufferedChar {
 	char *str;

@@ -3,8 +3,8 @@
 #include <string.h>
 #include <string_view>
 
-#define FQ_BUF_SIZE (1ll<<30)
-#define FQ_BUF_SIZE_ONCE (1<<25)
+#define FQ_BUF_SIZE (1ll<<35)
+#define FQ_BUF_SIZE_ONCE (1<<30)
 
 FastqReader::FastqReader(string filename, bool hasQuality, bool phred64){
 	mFilename = filename;
