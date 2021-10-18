@@ -1,4 +1,6 @@
 #include "writerThread.h"
+#include "barcodeToPositionMulti.h"
+
 
 WriterThread::WriterThread(string filename, int compressionLevel)
 	: rb(512 * 1024 * 16)
@@ -26,14 +28,30 @@ bool WriterThread::setInputCompleted() {
 	return true;
 }
 
-void WriterThread::outputTask() {
+void WriterThread::outputTask(RingbufWriter *writer_out, int threadNum) {
 	while(true) {
-		OutputStrPack *pack = rb.dequeue_acquire();
-		if(pack->size == 0)
+		bool allCompleted = true;
+		for(int i = 0; i < threadNum; i++) {
+			if(writer_out[i].isCompleted() || writer_out[i].read_count >= writer_out[i].write_count) {
+				continue;
+			}
+			allCompleted = false;
+			BufferedChar *out_str = *writer_out[i].dequeue_acquire();
+			mWriter1->write(out_str->str, out_str->length);
+			delete out_str;
+			writer_out[i].dequeue();
+			writer_out[i].read_count ++;
+		}
+
+		if(allCompleted) {
 			break;
+		}
+		// OutputStrPack *pack = rb.dequeue_acquire();
+		// if(pack->size == 0)
+		// 	break;
 		
-		mWriter1->write(pack->data, pack->size);
-		rb.dequeue();
+		// mWriter1->write(pack->data, pack->size);
+		// rb.dequeue();
 	}
 }
 

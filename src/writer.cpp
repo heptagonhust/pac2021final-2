@@ -123,3 +123,11 @@ void Writer::close(){
 bool Writer::isZipped(){
 	return mZipped;
 }
+
+void RingbufWriter::setCompleted() {
+	completed = true;
+}
+
+bool RingbufWriter::isCompleted() const {
+	return completed;
+}

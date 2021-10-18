@@ -1,6 +1,7 @@
 #pragma once
 
 #include <semaphore.h>
+#define RINGBUF_MAX_BUFFER_LENGTH 1ll<<25
 
 // one to one only
 template <typename T> 
@@ -28,7 +29,7 @@ public:
 
 template <typename T> 
 RingBuf<T>::RingBuf()
-  : capacity(128)
+  : capacity(RINGBUF_MAX_BUFFER_LENGTH)
 {
   bufs = new T[capacity];
   sem_init(&empty, 0, capacity);
