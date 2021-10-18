@@ -23,7 +23,7 @@ void ChipMaskHDF5::openFile(){
     //}  
 }
 
-herr_t ChipMaskHDF5::writeDataSet(std::string chipID, slideRange& sliderange, unordered_map<uint64, Position1>& bpMap, uint32_t barcodeLen, uint8_t segment, uint32_t slidePitch, uint compressionLevel, int index){
+herr_t ChipMaskHDF5::writeDataSet(std::string chipID, slideRange& sliderange, BarcodeMap& bpMap, uint32_t barcodeLen, uint8_t segment, uint32_t slidePitch, uint compressionLevel, int index){
     //generate dataSet space
     hid_t dataspaceID;
     hsize_t dims[RANK];
@@ -105,7 +105,7 @@ herr_t ChipMaskHDF5::writeDataSet(std::string chipID, slideRange& sliderange, un
     return status;
 }
 
-void ChipMaskHDF5::readDataSet(unordered_map<uint64, Position1>& bpMap, int index){
+void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
     herr_t status;
     //open dataset with datasetName
     std::string datasetName = DATASETNAME + std::to_string(index);

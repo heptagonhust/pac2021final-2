@@ -18,7 +18,7 @@ BarcodePositionConfig::~BarcodePositionConfig()
 	}
 	if (!bpmap.empty()) {
 		bpmap.clear();
-		unordered_map<uint64, Position1>().swap(bpmap);
+		BarcodeMap().swap(bpmap);
 	}
 }
 
@@ -45,7 +45,7 @@ BarcodePositionConfig* BarcodePositionConfig::merge(BarcodePositionConfig** conf
 		configs[i]->barcodeSet.clear();
 		unordered_set<uint64>().swap(configs[i]->barcodeSet);
 		configs[i]->bpmap.clear();
-		unordered_map<uint64, Position1>().swap(configs[i]->bpmap);
+		BarcodeMap().swap(configs[i]->bpmap);
 	}
 	return config;
 }

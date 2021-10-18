@@ -1,7 +1,7 @@
 #include "barcodeProcessor.h"
 #include <string_view>
 
-BarcodeProcessor::BarcodeProcessor(Options* opt, unordered_map<uint64, Position1>* mbpmap)
+BarcodeProcessor::BarcodeProcessor(Options* opt, BarcodeMap* mbpmap)
 {
 	// string_view OK
 	mOptions = opt;
@@ -180,7 +180,7 @@ long BarcodeProcessor::getBarcodeTypes()
 Position1* BarcodeProcessor::getPosition(uint64 barcodeInt)
 {
 	// string_view OK
-	unordered_map<uint64, Position1>::iterator iter = bpmap->find(barcodeInt);
+	BarcodeMap::iterator iter = bpmap->find(barcodeInt);
 	if (iter!=bpmap->end()) {
 		overlapReads++;
 		return &iter->second;
@@ -323,14 +323,14 @@ string BarcodeProcessor::positionToString(Position1* position){
 	return positionString.str();
 }
 
-unordered_map<uint64, Position1>::iterator BarcodeProcessor::getMisOverlap(uint64 barcodeInt)
+BarcodeMap::iterator BarcodeProcessor::getMisOverlap(uint64 barcodeInt)
 {
 	// string_view OK
 	uint64 misBarcodeInt;
 	int misCount = 0;
 	int misMaskIndex = 0;
-	unordered_map<uint64, Position1>::iterator iter;
-	unordered_map<uint64, Position1>::iterator overlapIter;
+	BarcodeMap::iterator iter;
+	BarcodeMap::iterator overlapIter;
 
 	for (int mis = 0; mis < mismatch; mis++){
 		misCount = 0;
@@ -359,8 +359,8 @@ Position1* BarcodeProcessor::getNOverlap(string_view& barcodeString, uint8 Ninde
 	//N has the same encode (11) with G
 	int misCount = 0;
 	uint64 barcodeInt = seqEncode(barcodeString, 0, barcodeString.length());
-	unordered_map<uint64, Position1>::iterator iter;
-	unordered_map<uint64, Position1>::iterator overlapIter;
+	BarcodeMap::iterator iter;
+	BarcodeMap::iterator overlapIter;
 	iter = bpmap->find(barcodeInt);
 	if (iter!=bpmap->end()) {
 		misCount++;

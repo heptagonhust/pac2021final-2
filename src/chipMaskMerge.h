@@ -31,7 +31,7 @@ public:
     Options* mOptions;
     vector<std::string> inMasks;
     std::string outMask;
-    unordered_map<uint64, Position1> bpmap;
+    BarcodeMap bpmap;
     set<uint64> dupBarcode;
     long dupBarcodes = 0;
     long overlapBarcodes = 0;

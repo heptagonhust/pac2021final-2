@@ -31,9 +31,9 @@ public:
 	long getBarcodeTypes();
 	void dumpbpmap(string& mapOutFile);
 	void loadbpmap();
-	unordered_map<uint64, Position1>* getBpmap() { return &bpmap; };
+	BarcodeMap* getBpmap() { return &bpmap; };
 public:
-	unordered_map<uint64,  Position1> bpmap;
+	BarcodeMap bpmap;
 	Options* mOptions;
 	set<uint64> dupBarcode;
 	long overlapBarcodes;

@@ -7,7 +7,7 @@ ChipMaskMerge::ChipMaskMerge(Options* opt){
 }
 
 ChipMaskMerge::~ChipMaskMerge(){
-    unordered_map<uint64, Position1>().swap(bpmap);
+    BarcodeMap().swap(bpmap);
 }
 
 void ChipMaskMerge::maskMerge(){
@@ -146,7 +146,7 @@ bool ChipMaskMerge::add(uint64 barcodeInt, Position1& position){
         dupBarcodes++;
         return false;
     }
-    unordered_map<uint64, Position1>::iterator dupBarcodeFind = bpmap.find(barcodeInt);
+    BarcodeMap::iterator dupBarcodeFind = bpmap.find(barcodeInt);
     if (dupBarcodeFind != bpmap.end()){
         if (dupBarcodeFind->second.x == position.x && dupBarcodeFind->second.y == position.y){
             overlapBarcodes++;
@@ -180,7 +180,7 @@ void ChipMaskMerge::dumpBpmap(){
     time_t start = time(NULL);
 	cout << "##########dump barcodeToPosition map begin..." << endl;
 	if (ends_with(outMask, ".bin")) {
-		unordered_map<uint64, Position1>::iterator mapIter = bpmap.begin();
+		BarcodeMap::iterator mapIter = bpmap.begin();
 		bpmap.reserve(bpmap.size());
 		ofstream writer(outMask, ios::out | ios::binary);
 		//boost::archive::binary_oarchive oa(writer);
@@ -204,7 +204,7 @@ void ChipMaskMerge::dumpBpmap(){
 	}
 	else {
 		ofstream writer(outMask);
-		unordered_map<uint64, Position1>::iterator mapIter = bpmap.begin();
+		BarcodeMap::iterator mapIter = bpmap.begin();
 		while (mapIter != bpmap.end()) {
 			writer << seqDecode(mapIter->first, barcodeLen) << "\t" << mapIter->second.x << "\t" << mapIter->second.y << endl;
 			mapIter++;

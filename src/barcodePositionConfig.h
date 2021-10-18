@@ -25,7 +25,7 @@ public:
 	long withoutPositionRead;
 	int mThreadId;
 	unordered_set<uint64> barcodeSet;
-	unordered_map<uint64, Position1> bpmap;
+	BarcodeMap bpmap;
 };
 
 #endif 

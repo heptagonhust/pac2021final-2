@@ -25,7 +25,7 @@ public:
 	static Result* merge(vector<Result*>& list);
 	void print();
 	void dumpDNBs(string& mappedDNBOutFile);
-	void setBarcodeProcessor(unordered_map<uint64, Position1>* bpmap);
+	void setBarcodeProcessor(BarcodeMap* bpmap);
 private:
 	void setBarcodeProcessor();
 public:

@@ -10,8 +10,11 @@
 #include <time.h>
 #include <mutex>
 #include "common.h"
+#include <parallel_hashmap/phmap.h>
 
 using namespace std;
+using phmap::parallel_flat_hash_map;
+typedef parallel_flat_hash_map<uint64, Position1> BarcodeMap;
 
 inline bool starts_with(string const& value, string const& starting)
 {

@@ -12,12 +12,11 @@ message("zstd headers found in ${ZSTD_INC}")
 
 find_package(ZLIB)
 find_package(Threads REQUIRED)
-find_package(HDF5 REQUIRED)
-find_package(Boost 1.70 REQUIRED COMPONENTS serialization)
 
 add_definitions("-g" "-O3" "-DZWRAP_USE_ZSTD")
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${ZSTD_INC})
+include_directories(third_party/parallel-hashmap)
 file(GLOB SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 file(GLOB ZSTD_FILES ${PROJECT_SOURCE_DIR}/src/zstd/*.c)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
