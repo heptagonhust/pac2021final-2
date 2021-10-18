@@ -11,6 +11,15 @@
 #include "ringbuf.hpp"
 #include <thread>
 #include <functional>
+#include <string_view>
+
+#define LINE_PACK_SIZE 4096
+struct LinePack {
+	string_view lines[LINE_PACK_SIZE];
+	int size;
+	LinePack() : size(0) {}
+};
+
 
 class FastqReader{
 public:
@@ -23,6 +32,7 @@ public:
 	//this function is not thread-safe
 	//do not call read() of a same FastqReader object from different threads concurrently
 	Read* read();
+	Read* read(Read* dst);
 	bool eof();
 	bool hasNoLineBreakAtEnd();
 
@@ -34,7 +44,7 @@ public:
 private:
 	void init();
 	void close();
-	string_view getLine();
+	const string_view& getLine();
 	void clearLineBreaks(char* line);
 	void readToBufLarge();
 	void stringProcess();
@@ -46,8 +56,8 @@ private:
 	bool mZipped;
 	bool mHasQuality;
 	bool mPhred64;
-	bool mReadFinished;
-	RingBuf<char*> *produce_rb;
+	RingBuf<LinePack> line_ptr_rb;
+	RingBuf<size_t> input_buffer_rb;
 	bool mStdinMode;
 	bool mHasNoLineBreakAtEnd;
 	size_t mBufReadLength;
@@ -55,6 +65,8 @@ private:
 	char *mBufLarge;
 	bool mNoLineLeftInRingBuf;
 
+	LinePack* line_pack_outputing = nullptr;
+	size_t line_pack_n_outputed = 0;
 };
 
 class FastqReaderPair{

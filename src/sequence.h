@@ -12,7 +12,7 @@ class Sequence{
 public:
     Sequence();
     Sequence(string_view seq);
-    Sequence(char* str);
+    // Sequence(char* str);
     ~Sequence();
     void print();
     int length();
@@ -24,7 +24,7 @@ public:
 
 public:
     string_view mStr;
-    char* rawStr = nullptr;
+    // char* rawStr = nullptr;
 };
 
 #endif

@@ -7,16 +7,18 @@ Sequence::Sequence(){
 Sequence::Sequence(string_view seq){
     mStr = seq;
 }
-
+/*
 Sequence::Sequence(char* str){
     rawStr = str;
     mStr = string_view{str};
 }
-
+*/
 Sequence::~Sequence(){
+/*
     if (rawStr != nullptr) {
         delete [] rawStr;
     }
+*/
 }
 void Sequence::print(){
     std::cerr << mStr;

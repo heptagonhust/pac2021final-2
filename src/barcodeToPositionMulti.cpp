@@ -141,16 +141,12 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 	const int count = min(pack->count_right, pack->count_left);
 	for (int p = 0; p < count; p++) {
 		result->mTotalRead++;
-		ReadPair* pair = &pack->data[p];
-		Read* or1 = pair->mLeft;
-		Read* or2 = pair->mRight;
+		IReadPair* pair = &pack->data[p];
+		Read* or1 = &pair->mLeft;
+		Read* or2 = &pair->mRight;
 		if (filterFixedSequence) {
 			fixedFiltered = fixedFilter->filter(or1, or2, result);
 			if (fixedFiltered) {
-				pair->mLeft = NULL;
-				pair->mRight = NULL;
-				delete or1;
-				delete or2;
 				continue;
 			}
 		}
@@ -161,10 +157,6 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 		else if (mUnmappedWriter) {
 			unmappedOut.appendThenFree(or2->toNewCharPointer());
 		}
-		pair->mLeft = NULL;
-		pair->mRight = NULL;
-		delete or1;
-		delete or2;
 	}
 
 	mOutputMtx.lock();
@@ -193,8 +185,7 @@ void BarcodeToPositionMulti::producerTaskLeft(RingBufPair *rb, FastqReader *read
 	int num_threads = mOptions->thread;
 	ReadPairPack* pack = rb[thread_id].enqueue_acquire_left();
 	while (true) {
-		Read* read = reader->read();
-		pack->data[count].mLeft = read;
+		Read* read = reader->read(&pack->data[count].mLeft);
 
 		if (!read) {
 			pack->count_left = count;
@@ -239,8 +230,7 @@ void BarcodeToPositionMulti::producerTaskRight(RingBufPair *rb, FastqReader *rea
 	int num_threads = mOptions->thread;
 	ReadPairPack* pack = rb[thread_id].enqueue_acquire_right();
 	while (true) {
-		Read* read = reader->read();
-		pack->data[count].mRight = read;
+		Read* read = reader->read(&pack->data[count].mRight);
 
 		if (!read) {
 			pack->count_right = count;

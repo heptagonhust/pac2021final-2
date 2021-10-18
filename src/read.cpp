@@ -53,6 +53,10 @@ Read::Read(Read &r) {
 	mHasQuality = r.mHasQuality;
 }
 
+Read::Read()
+{
+}
+
 Read::~Read()
 {
 }

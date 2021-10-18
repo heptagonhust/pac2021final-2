@@ -19,6 +19,7 @@ public:
 	// Read(string name, string seq, string strand);
     // Read(string name, Sequence seq, string strand);
     Read(Read &r);
+    Read();
 	~Read();
 	void print();
     // void printFile(ofstream& file);
@@ -50,9 +51,9 @@ public:
 	string_view mStrand;
 	string_view mQuality;
 	string_view mBarcode;
-	string SEQ500 = "seq500";
-	string DEPSEQT1 = "T1";
-	int dnbIdx[3];
+	// string SEQ500 = "seq500";
+	// string DEPSEQT1 = "T1";
+	// int dnbIdx[3];
 	bool mHasQuality;
 };
 

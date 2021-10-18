@@ -69,3 +69,13 @@ void RingBufPair::dequeue()
   sem_post(&empty_right);
   start = (start + 1) % capacity;
 }
+
+IReadPair::IReadPair()
+  : mLeft(), mRight()
+{
+
+}
+
+IReadPair::~IReadPair() {
+
+}

@@ -4,8 +4,19 @@
 
 #include <semaphore.h>
 
+class IReadPair{
+public:
+    IReadPair();
+    ~IReadPair();
+
+public:
+    Read mLeft;
+    Read mRight;
+};
+
+
 struct ReadPairPack {
-	ReadPair data[PACK_SIZE];
+	IReadPair data[PACK_SIZE];
 	int count_left;
 	int count_right;
 	ReadPairPack() {
