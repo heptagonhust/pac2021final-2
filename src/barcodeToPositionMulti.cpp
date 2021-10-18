@@ -64,8 +64,10 @@ bool BarcodeToPositionMulti::process()
 	producerRight.detach();
 	for (int t = 0; t < mOptions->thread; t++) {
 		threads[t]->join();
-		mapped_out[t].setCompleted();
-		unmapped_out[t].setCompleted();
+		*mapped_out[t].enqueue_acquire() = nullptr;
+		mapped_out[t].enqueue();
+		*unmapped_out[t].enqueue_acquire() = nullptr;
+		unmapped_out[t].enqueue();
 	}	
 
 	// if (mWriter)
@@ -165,10 +167,12 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result, 
 
 	if (mUnmappedWriter && unmappedOut->length != 0) {
 		*unmapped_out->enqueue_acquire() = unmappedOut;
+		unmapped_out->enqueue();
 		unmapped_out->write_count ++;
 	}
 	if (mWriter && outstr->length != 0) {
 		*mapped_out->enqueue_acquire() = outstr;
+		mapped_out->enqueue();
 		mapped_out -> write_count ++;
 	}
 

@@ -37,10 +37,14 @@ void WriterThread::outputTask(RingbufWriter *writer_out, int threadNum) {
 			}
 			allCompleted = false;
 			BufferedChar *out_str = *writer_out[i].dequeue_acquire();
-			mWriter1->write(out_str->str, out_str->length);
-			delete out_str;
-			writer_out[i].dequeue();
-			writer_out[i].read_count ++;
+			if(out_str == nullptr) {
+				writer_out[i].setCompleted();
+			} else {
+				mWriter1->write(out_str->str, out_str->length);
+				delete out_str;
+				writer_out[i].dequeue();
+				writer_out[i].read_count ++;
+			}
 		}
 
 		if(allCompleted) {
