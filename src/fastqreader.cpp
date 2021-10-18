@@ -9,7 +9,7 @@
 
 
 FastqReader::FastqReader(string filename, bool hasQuality, bool phred64)
-	: line_ptr_rb(1ll<<24), input_buffer_rb(4096 * 1024)
+	: line_ptr_rb(1024), input_buffer_rb(4096 * 1024)
 {
 	mFilename = filename;
 	mZipFile = NULL;

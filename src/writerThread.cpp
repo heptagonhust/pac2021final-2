@@ -1,7 +1,7 @@
 #include "writerThread.h"
 
 WriterThread::WriterThread(string filename, int compressionLevel)
-	: rb(128)
+	: rb(512 * 1024 * 16)
 {
 	compression = compressionLevel;
 
