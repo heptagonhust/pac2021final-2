@@ -72,7 +72,6 @@ public:
 
 private:
 	std::mutex mOutputMtx;
-	gzFile mZipFile;
 	ofstream* mOutStream;
 	WriterThread* mWriter;
 	WriterThread* mUnmappedWriter;

@@ -4,7 +4,6 @@ BarcodeToPositionMulti::BarcodeToPositionMulti(Options* opt)
 {
 	mOptions = opt;
 	mOutStream = NULL;
-	mZipFile = NULL;
 	mWriter = NULL;
 	mUnmappedWriter = NULL;
 	bool isSeq500 = opt->isSeq500;

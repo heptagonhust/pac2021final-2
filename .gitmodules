@@ -1,3 +1,6 @@
 [submodule "third_party/parallel-hashmap"]
 	path = third_party/parallel-hashmap
 	url = https://github.com/greg7mdp/parallel-hashmap.git
+[submodule "src/igzip"]
+	path = src/igzip
+	url = git@github.com:ueqri/igzip-wrapper.git

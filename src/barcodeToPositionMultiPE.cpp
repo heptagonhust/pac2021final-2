@@ -6,7 +6,6 @@ BarcodeToPositionMultiPE::BarcodeToPositionMultiPE(Options* opt)
 	mProduceFinished = false;
 	mFinishedThreads = 0;
 	mOutStream = NULL;
-	mZipFile = NULL;
 	mWriter1 = NULL;
 	mWriter2 = NULL;
 	mUnmappedWriter1 = NULL;

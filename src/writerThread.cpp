@@ -74,10 +74,10 @@ void WriterThread::initWriter(ofstream* stream) {
 	mWriter1 = new Writer(stream);
 }
 
-void WriterThread::initWriter(gzFile gzfile) {
-	deleteWriter();
-	mWriter1 = new Writer(gzfile);
-}
+// void WriterThread::initWriter(gzFile gzfile) {
+// 	deleteWriter();
+// 	mWriter1 = new Writer(gzfile);
+// }
 
 long WriterThread::bufferLength() {
 	assert(0);

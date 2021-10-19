@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "read.h"
-#include "zstd/zstd_zlibwrapper.h"
+#include "igzip/igzip_wrapper.h"
 #include "common.h"
 #include <iostream>
 #include <fstream>
@@ -27,13 +27,13 @@ public:
 	~FastqReader();
 	bool isZipped();
 
-	void getBytes(size_t& bytesRead, size_t& bytesTotal);
+	// void getBytes(size_t& bytesRead, size_t& bytesTotal);
 
 	//this function is not thread-safe
 	//do not call read() of a same FastqReader object from different threads concurrently
 	Read* read();
 	Read* read(Read* dst);
-	bool eof();
+	// bool eof();
 	bool hasNoLineBreakAtEnd();
 
 public:
@@ -45,13 +45,13 @@ private:
 	void init();
 	void close();
 	const string_view& getLine();
-	void clearLineBreaks(char* line);
+	// void clearLineBreaks(char* line);
 	void readToBufLarge();
 	void stringProcess();
 
 private:
 	string mFilename;
-	gzFile mZipFile;
+	char* mZipFileName;
 	FILE* mFile;
 	bool mZipped;
 	bool mHasQuality;

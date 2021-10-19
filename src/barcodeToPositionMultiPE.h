@@ -55,7 +55,6 @@ private:
 	atomic_int mFinishedThreads;
 	std::mutex mOutputMtx;
 	std::mutex mInputMutx;
-	gzFile mZipFile;
 	ofstream* mOutStream;
 	WriterThread* mWriter1;
 	WriterThread* mWriter2;

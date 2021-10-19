@@ -1,4 +1,5 @@
 #include "fastqreader.h"
+#include "igzip/igzip_wrapper.h"
 #include "util.h"
 #include <string.h>
 #include <string_view>
@@ -12,13 +13,14 @@ FastqReader::FastqReader(string filename, bool hasQuality, bool phred64)
 	: line_ptr_rb(1024), input_buffer_rb(4096 * 1024)
 {
 	mFilename = filename;
-	mZipFile = NULL;
+	mZipFileName = NULL;
 	mZipped = false;
 	mFile = NULL;
 	mStdinMode = false;
 	mPhred64 = phred64;
 	mHasQuality = hasQuality;
 	mBufLarge = new char[FQ_BUF_SIZE];
+	mBufReadLength = 0;
 	mHasNoLineBreakAtEnd = false;
 	mStringProcessedLength = 1;
 
@@ -36,23 +38,12 @@ bool FastqReader::hasNoLineBreakAtEnd() {
 
 void FastqReader::readToBufLarge() {
 	if(mZipped) {
-		size_t mBufDataLen;
-		for(mBufReadLength = 0; mBufReadLength < FQ_BUF_SIZE; mBufReadLength += mBufDataLen) {
-			mBufDataLen = gzread(mZipFile, mBufLarge+mBufReadLength, FQ_BUF_SIZE_ONCE);
-			*input_buffer_rb.enqueue_acquire() = mBufDataLen;
-			input_buffer_rb.enqueue();
-			// stringProcess(false);
-
-			if(mBufDataLen == 0) {
-				if (mBufReadLength >= FQ_BUF_SIZE) {
-					assert(0);
-				}
-				break;
-			}
-			if(mBufDataLen == -1) {
-				error_exit("Error to read gzip file: " + mFilename);
-				//cerr << "Error to read gzip file" << endl;
-			}
+		// mBufLarge may overflow, take care!
+		if (decompress_file(mZipFileName, (unsigned char*)mBufLarge, &mBufReadLength) != 0) {
+			error_exit("Error to read gzip file: " + mFilename);
+		}
+		if (mBufReadLength >= FQ_BUF_SIZE) {
+			assert(false);
 		}
 	} else {
 		size_t mBufDataLen;
@@ -67,9 +58,7 @@ void FastqReader::readToBufLarge() {
 			}
 		}
 	}
-	*input_buffer_rb.enqueue_acquire() = 0;
-	input_buffer_rb.enqueue();
-	// stringProcess(true);
+	stringProcess();
 }
 
 void FastqReader::stringProcess() {
@@ -77,27 +66,14 @@ void FastqReader::stringProcess() {
 	size_t line_pack_size = 0;
 
 	char *line_end, *line_start;
-	size_t buff_size = *input_buffer_rb.dequeue_acquire();
-	input_buffer_rb.dequeue();
+	size_t buff_size = mBufReadLength;
 	line_start = line_end = mBufLarge;
 
 	while(true) {
 		// find end of line
 		line_end = line_start;
 		int line_len = 0;
-		while(true) {
-			if(line_len > buff_size) {
-				size_t n = *input_buffer_rb.dequeue_acquire();
-				input_buffer_rb.dequeue();
-				if(n == 0) 
-					goto line_search_done;
-				
-				buff_size += n;
-			}
-
-			if(*line_end == '\n' || *line_end == '\r')
-				break;
-			
+		while(*line_end != '\n' && *line_end != '\r' && *line_end != '\0') {
 			line_len++, line_end++;
 		}
 
@@ -115,25 +91,19 @@ void FastqReader::stringProcess() {
 			line_pack_size = 0;
 		}
 
+ 		// case: a b c \0 -- break
+		// cases: a b c \n ... \n \0 -- trim delim in the ends as follows then break
+		if (!buff_size) break;
+
 		// find start of next line
-		line_len = 0;
+		line_len = 1; // borrows variable line_len, exactly means delim length
 		line_start = line_end + 1;
-		while(true) {
-			if(line_len > buff_size) {
-				size_t n = *input_buffer_rb.dequeue_acquire();
-				input_buffer_rb.dequeue();
-				if(n == 0) 
-					goto line_search_done;
-				
-				buff_size += n;
-			}
-			if(*line_start != '\n')
-				break;
+		while(*line_start == '\n') {
 			line_start++, line_len++;
 		}
 		buff_size -= line_len;
 	}
-	line_search_done:
+
 	if(line_pack_size != 0) {
 		line_pack->size = line_pack_size;
 		line_ptr_rb.enqueue();
@@ -149,9 +119,8 @@ void FastqReader::stringProcess() {
 
 void FastqReader::init(){
 	if (ends_with(mFilename, ".gz")){
-		mZipFile = gzopen(mFilename.c_str(), "r");
+		mZipFileName = (char*)mFilename.c_str();
 		mZipped = true;
-		gzrewind(mZipFile);
 	}
 	else {
 		if(mFilename == "/dev/stdin") {
@@ -166,36 +135,34 @@ void FastqReader::init(){
 	}
 
 	std::thread readBuffer(std::bind(&FastqReader::readToBufLarge, this));
-	std::thread stringProcess(std::bind(&FastqReader::stringProcess, this));
 	readBuffer.detach();
-	stringProcess.detach();
 }
 
-void FastqReader::getBytes(size_t& bytesRead, size_t& bytesTotal) {
-	if(mZipped) {
-		bytesRead = gzoffset(mZipFile);
-	} else {
-		bytesRead = ftell(mFile);//mFile.tellg();
-	}
+// void FastqReader::getBytes(size_t& bytesRead, size_t& bytesTotal) {
+// 	if(mZipped) {
+// 		bytesRead = gzoffset(mZipFile);
+// 	} else {
+// 		bytesRead = ftell(mFile);//mFile.tellg();
+// 	}
 
-	// use another ifstream to not affect current reader
-	ifstream is(mFilename);
-	is.seekg (0, is.end);
-	bytesTotal = is.tellg();
-}
+// 	// use another ifstream to not affect current reader
+// 	ifstream is(mFilename);
+// 	is.seekg (0, is.end);
+// 	bytesTotal = is.tellg();
+// }
 
-void FastqReader::clearLineBreaks(char* line) {
+// void FastqReader::clearLineBreaks(char* line) {
 
-	// trim \n, \r or \r\n in the tail
-	int readed = strlen(line);
-	if(readed >=2 ){
-		if(line[readed-1] == '\n' || line[readed-1] == '\r'){
-			line[readed-1] = '\0';
-			if(line[readed-2] == '\r')
-				line[readed-2] = '\0';
-		}
-	}
-}
+// 	// trim \n, \r or \r\n in the tail
+// 	int readed = strlen(line);
+// 	if(readed >=2 ){
+// 		if(line[readed-1] == '\n' || line[readed-1] == '\r'){
+// 			line[readed-1] = '\0';
+// 			if(line[readed-2] == '\r')
+// 				line[readed-2] = '\0';
+// 		}
+// 	}
+// }
 
 const string_view& FastqReader::getLine(){
 	LinePack *line_pack = line_pack_outputing;
@@ -218,18 +185,18 @@ const string_view& FastqReader::getLine(){
 	return line;
 }
 
-bool FastqReader::eof() {
-	if (mZipped) {
-		return gzeof(mZipFile);
-	} else {
-		return feof(mFile);//mFile.eof();
-	}
-}
+// bool FastqReader::eof() {
+// 	if (mZipped) {
+// 		return gzeof(mZipFile);
+// 	} else {
+// 		return feof(mFile);//mFile.eof();
+// 	}
+// }
 
 Read* FastqReader::read(){
 	assert(0);
 	if (mZipped){
-		if (mZipFile == NULL)
+		if (mZipFileName == NULL)
 			return NULL;
 	}
 
@@ -270,7 +237,7 @@ Read* FastqReader::read(){
 
 Read* FastqReader::read(Read* dst){
 	if (mZipped){
-		if (mZipFile == NULL)
+		if (mZipFileName == NULL)
 			return NULL;
 	}
 
@@ -315,9 +282,8 @@ Read* FastqReader::read(Read* dst){
 
 void FastqReader::close(){
 	if (mZipped){
-		if (mZipFile){
-			gzclose(mZipFile);
-			mZipFile = NULL;
+		if (mZipFileName){
+			mZipFileName = NULL;
 		}
 	}
 	else {

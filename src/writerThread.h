@@ -28,7 +28,7 @@ public:
 
 	void initWriter(string filename1);
 	void initWriter(ofstream* stream);
-	void initWriter(gzFile gzfile);
+	// void initWriter(gzFile gzfile);
 
 	void cleanup();
 
