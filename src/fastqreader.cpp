@@ -14,6 +14,7 @@ FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality,
 	mPhred64 = phred64;
 	mHasQuality = hasQuality;
 	mBufLarge = globalBufLarge;
+	mNoLineLeftInRingBuf = false;
 	mBufReadLength = 0;
 	init();
 }
