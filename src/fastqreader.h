@@ -37,8 +37,6 @@ public:
 	//do not call read() of a same FastqReader object from different threads concurrently
 	Read* read();
 	Read* read(Read* dst);
-	// bool eof();
-	bool hasNoLineBreakAtEnd();
 
 public:
 	static bool isZipFastq(string filename);
@@ -63,9 +61,7 @@ private:
 	RingBuf<LinePack> line_ptr_rb;
 	RingBuf<size_t> input_buffer_rb;
 	bool mStdinMode;
-	bool mHasNoLineBreakAtEnd;
 	size_t mBufReadLength;
-	size_t mStringProcessedLength;
 	char *mBufLarge;
 	bool mNoLineLeftInRingBuf;
 
