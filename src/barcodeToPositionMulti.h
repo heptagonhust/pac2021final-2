@@ -29,15 +29,15 @@ public:
 private:
 	void initOutput();
 	void closeOutput();
-	bool processPairEnd(ReadPairPack* pack, Result* result, RingbufWriter *mapped_out, RingbufWriter *unmapped_out);
+	bool processPairEnd(ReadPairPack* pack, Result* result, RingBuf<BufferedChar*> *mapped_out, RingBuf<BufferedChar*> *unmapped_out);
 	void initPackRepositoey();
 	void destroyPackRepository();
 	void producePack(ReadPairPack* pack);
 	void consumePack(Result* result);
 	void producerTaskLeft(RingBufPair *rb, FastqReader *reader);
 	void producerTaskRight(RingBufPair *rb, FastqReader *reader);
-	void consumerTask(int thread_id, RingBufPair *rb, Result* result, RingbufWriter *mapped_out, RingbufWriter *unmapped_out);
-	void writeTask(WriterThread* config, RingbufWriter *writer_out);
+	void consumerTask(int thread_id, RingBufPair *rb, Result* result, RingBuf<BufferedChar*> *mapped_out, RingBuf<BufferedChar*> *unmapped_out);
+	void writeTask(WriterThread* config, RingBuf<BufferedChar*> *writer_out);
 	
 public:
 	Options* mOptions;

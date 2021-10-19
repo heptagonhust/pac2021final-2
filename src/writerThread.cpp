@@ -28,34 +28,32 @@ bool WriterThread::setInputCompleted() {
 	return true;
 }
 
-void WriterThread::outputTask(RingbufWriter *writer_out, int threadNum) {
+void WriterThread::outputTask(RingBuf<BufferedChar*> *writer_out, int threadNum) {
+	bool threadCompleted[threadNum] = {false};
 	while(true) {
 		bool allCompleted = true;
 		for(int i = 0; i < threadNum; i++) {
-			if(writer_out[i].isCompleted() || writer_out[i].read_count >= writer_out[i].write_count) {
+			if(threadCompleted[i])
 				continue;
-			}
 			allCompleted = false;
-			BufferedChar *out_str = *writer_out[i].dequeue_acquire();
+
+			bool sucess;
+			BufferedChar *out_str = *writer_out[i].try_dequeue_acquire(sucess);
+			if(!sucess)
+				continue;
 			if(out_str == nullptr) {
-				writer_out[i].setCompleted();
+				threadCompleted[i] = true;
 			} else {
 				mWriter1->write(out_str->str, out_str->length);
 				delete out_str;
+				
 				writer_out[i].dequeue();
-				writer_out[i].read_count ++;
 			}
 		}
 
 		if(allCompleted) {
 			break;
 		}
-		// OutputStrPack *pack = rb.dequeue_acquire();
-		// if(pack->size == 0)
-		// 	break;
-		
-		// mWriter1->write(pack->data, pack->size);
-		// rb.dequeue();
 	}
 }
 

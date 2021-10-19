@@ -33,7 +33,7 @@ public:
 	void cleanup();
 
 	bool isCompleted();
-	void outputTask(RingbufWriter *writer_out, int threadNum);
+	void outputTask(RingBuf<BufferedChar*> *writer_out, int threadNum);
 	void input(const char* data, size_t size);
 	bool setInputCompleted();
 

@@ -68,21 +68,4 @@ struct BufferedChar {
 	}
 };
 
-class RingbufWriter : public RingBuf<BufferedChar *> {
-
-private:
-	
-	bool completed {};
-
-public:
-
-	size_t write_count {};
-	size_t read_count {};
-
-	void setCompleted();
-
-	bool isCompleted() const;
-	
-};
-
 #endif

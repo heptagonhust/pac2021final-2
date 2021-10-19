@@ -46,8 +46,8 @@ bool BarcodeToPositionMulti::process()
 	}
 
 	std::thread** threads = new thread * [mOptions->thread];
-	RingbufWriter unmapped_out[mOptions->thread];
-	RingbufWriter mapped_out[mOptions->thread];
+	RingBuf<BufferedChar*> unmapped_out[mOptions->thread];
+	RingBuf<BufferedChar*> mapped_out[mOptions->thread];
 	for (int t = 0; t < mOptions->thread; t++) {
 		threads[t] = new std::thread(std::bind(&BarcodeToPositionMulti::consumerTask, this, t, &pack_ringbufs[t], results[t], &mapped_out[t], &unmapped_out[t]));
 	}
@@ -138,7 +138,7 @@ void BarcodeToPositionMulti::closeOutput()
 	}
 }
 
-bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result, RingbufWriter *mapped_out, RingbufWriter *unmapped_out)
+bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result, RingBuf<BufferedChar*> *mapped_out, RingBuf<BufferedChar*> *unmapped_out)
 {
 	BufferedChar *outstr = new BufferedChar;
 	BufferedChar *unmappedOut = new BufferedChar;
@@ -168,24 +168,12 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result, 
 	if (mUnmappedWriter && unmappedOut->length != 0) {
 		*unmapped_out->enqueue_acquire() = unmappedOut;
 		unmapped_out->enqueue();
-		unmapped_out->write_count ++;
 	}
 	if (mWriter && outstr->length != 0) {
 		*mapped_out->enqueue_acquire() = outstr;
 		mapped_out->enqueue();
-		mapped_out -> write_count ++;
 	}
-
-	// mOutputMtx.lock();
-	// if (mUnmappedWriter && unmappedOut.length != 0) {
-	// 	//write reads that can't be mapped to the slide
-	// 	mUnmappedWriter->input(unmappedOut.str, unmappedOut.length);
-	// }
-	// if (mWriter && outstr.length != 0) {
-	// 	mWriter->input(outstr.str, outstr.length);
-	// }
-	// mOutputMtx.unlock();
-
+	
 	return true;
 }
 
@@ -339,7 +327,7 @@ void BarcodeToPositionMulti::producerTask(RingBuf<ReadPairPack> *rb) {
 }
 */
 
-void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result* result, RingbufWriter *mapped_out, RingbufWriter *unmapped_out) {
+void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result* result, RingBuf<BufferedChar*> *mapped_out, RingBuf<BufferedChar*> *unmapped_out) {
 	const int num_thread = mOptions->thread;	
 	while (true) {
 		ReadPairPack* pack = rb->dequeue_acquire();
@@ -361,7 +349,7 @@ void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result
 	}
 }
 
-void BarcodeToPositionMulti::writeTask(WriterThread* config, RingbufWriter *writer_out) {
+void BarcodeToPositionMulti::writeTask(WriterThread* config, RingBuf<BufferedChar*> *writer_out) {
 	config->outputTask(writer_out, mOptions->thread);
 
 	if (mOptions->verbose) {

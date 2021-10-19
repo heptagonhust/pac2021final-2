@@ -1,6 +1,7 @@
 #pragma once
 
 #include <semaphore.h>
+#include <errno.h>
 #define RINGBUF_MAX_BUFFER_LENGTH 1ll<<25
 
 // one to one only
@@ -24,6 +25,7 @@ public:
   void enqueue();
 
   T* dequeue_acquire();
+  T* try_dequeue_acquire(bool &success);
   void dequeue();
 };
 
@@ -74,6 +76,16 @@ T* RingBuf<T>::dequeue_acquire()
   sem_wait(&full);
   return &bufs[start];
 }
+
+template <typename T> 
+T* RingBuf<T>::try_dequeue_acquire(bool &success)
+{
+  int r = sem_trywait(&full);
+  success = r == 0;
+  
+  return &bufs[start];
+}
+
 
 template <typename T> 
 void RingBuf<T>::dequeue()
