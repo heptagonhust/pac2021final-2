@@ -53,7 +53,7 @@ private:
 	ReadPairRepository1 mRepo;
 	atomic_bool mProduceFinished;
 	atomic_int mFinishedThreads;
-	std::mutex mOutputMtx;
+	// std::mutex mOutputMtx;
 	std::mutex mInputMutx;
 	ofstream* mOutStream;
 	WriterThread* mWriter1;

@@ -1,5 +1,7 @@
 #include "barcodeToPositionMulti.h"
 
+#define GLOBAL_BUF_SIZE (1ll<<36)
+
 BarcodeToPositionMulti::BarcodeToPositionMulti(Options* opt)
 {
 	mOptions = opt;
@@ -7,9 +9,11 @@ BarcodeToPositionMulti::BarcodeToPositionMulti(Options* opt)
 	mWriter = NULL;
 	mUnmappedWriter = NULL;
 	bool isSeq500 = opt->isSeq500;
+	mGlobalBufLarge = new char[GLOBAL_BUF_SIZE];
 
-	left_reader = new FastqReader(mOptions->transBarcodeToPos.in1);
-	right_reader = new FastqReader(mOptions->transBarcodeToPos.in2);
+	// left: [0, FQ_BUF_SIZE), right: [FQ_BUF_SIZE, 2*FQ_BUF_SIZE)
+	left_reader = new FastqReader(mOptions->transBarcodeToPos.in1, mGlobalBufLarge);
+	right_reader = new FastqReader(mOptions->transBarcodeToPos.in2, mGlobalBufLarge + FQ_BUF_SIZE);
 
 	mbpmap = new BarcodePositionMap(opt);
 	//barcodeProcessor = new BarcodeProcessor(opt, &mbpmap->bpmap);
@@ -21,6 +25,7 @@ BarcodeToPositionMulti::BarcodeToPositionMulti(Options* opt)
 
 BarcodeToPositionMulti::~BarcodeToPositionMulti()
 {
+	delete [] mGlobalBufLarge;
 	//if (fixedFilter) {
 	//	delete fixedFilter;
 	//}
@@ -49,29 +54,33 @@ bool BarcodeToPositionMulti::process()
 		threads[t] = new std::thread(std::bind(&BarcodeToPositionMulti::consumerTask, this, t, &pack_ringbufs[t], results[t]));
 	}
 
-	std::thread* writerThread = NULL;
-	std::thread* unMappedWriterThread = NULL;
-	if(mWriter){
-		writerThread = new std::thread(std::bind(&BarcodeToPositionMulti::writeTask, this, mWriter));
-	}
-	if (mUnmappedWriter) {
-		unMappedWriterThread = new std::thread(std::bind(&BarcodeToPositionMulti::writeTask, this, mUnmappedWriter));
-	}
+	// std::thread* writerThread = NULL;
+	// std::thread* unMappedWriterThread = NULL;
+	// if(mWriter){
+	// 	writerThread = new std::thread(std::bind(&BarcodeToPositionMulti::writeTask, this, mWriter));
+	// }
+	// if (mUnmappedWriter) {
+	// 	unMappedWriterThread = new std::thread(std::bind(&BarcodeToPositionMulti::writeTask, this, mUnmappedWriter));
+	// }
 	producerLeft.detach();
 	producerRight.detach();
 	for (int t = 0; t < mOptions->thread; t++) {
 		threads[t]->join();
 	}	
 
-	if (mWriter)
-		mWriter->setInputCompleted();
-	if (mUnmappedWriter)
-		mUnmappedWriter->setInputCompleted();
+	if (mWriter) {
+		mWriter->setInputCompleted(mOptions->thread, mGlobalBufLarge);
+		writeTask(mWriter);
+	}
+	if (mUnmappedWriter) {
+		mUnmappedWriter->setInputCompleted(mOptions->thread, mGlobalBufLarge);
+		writeTask(mUnmappedWriter);
+	}
 
-	if (writerThread)
-		writerThread->join();
-	if (unMappedWriterThread)
-		unMappedWriterThread->join();
+	// if (writerThread)
+	// 	writerThread->join();
+	// if (unMappedWriterThread)
+	// 	unMappedWriterThread->join();
 
 	if (mOptions->verbose)
 		loginfo("start to generate reports\n");
@@ -102,10 +111,10 @@ bool BarcodeToPositionMulti::process()
 	delete[] threads;
 	delete[] results;
 
-	if (writerThread)
-		delete writerThread;
-	if (unMappedWriterThread)
-		delete unMappedWriterThread;
+	// if (writerThread)
+	// 	delete writerThread;
+	// if (unMappedWriterThread)
+	// 	delete unMappedWriterThread;
 
 	closeOutput();
 
@@ -131,7 +140,7 @@ void BarcodeToPositionMulti::closeOutput()
 	}
 }
 
-bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
+bool BarcodeToPositionMulti::processPairEnd(int thread_id, ReadPairPack* pack, Result* result)
 {
 	BufferedChar outstr;
 	BufferedChar unmappedOut;
@@ -158,15 +167,13 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result)
 		}
 	}
 
-	mOutputMtx.lock();
 	if (mUnmappedWriter && unmappedOut.length != 0) {
 		//write reads that can't be mapped to the slide
-		mUnmappedWriter->input(unmappedOut.str, unmappedOut.length);
+		mUnmappedWriter->input(thread_id, unmappedOut.str, unmappedOut.length);
 	}
 	if (mWriter && outstr.length != 0) {
-		mWriter->input(outstr.str, outstr.length);
+		mWriter->input(thread_id, outstr.str, outstr.length);
 	}
-	mOutputMtx.unlock();
 
 	return true;
 }
@@ -332,7 +339,7 @@ void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result
 			}
 			break;
 		} else {
-			processPairEnd(pack, result);
+			processPairEnd(thread_id, pack, result);
 		}
 		rb->dequeue();
 	}

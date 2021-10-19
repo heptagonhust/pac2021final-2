@@ -13,6 +13,10 @@
 #include <functional>
 #include <string_view>
 
+#define FQ_BUF_SIZE (1ll<<35)
+#define FQ_BUF_SIZE_ONCE (1<<29)
+
+
 #define LINE_PACK_SIZE 4096
 struct LinePack {
 	string_view lines[LINE_PACK_SIZE];
@@ -23,7 +27,7 @@ struct LinePack {
 
 class FastqReader{
 public:
-	FastqReader(string filename, bool hasQuality = true, bool phred64=false);
+	FastqReader(string filename, char* globalBufLarge, bool hasQuality = true, bool phred64=false);
 	~FastqReader();
 	bool isZipped();
 
@@ -39,7 +43,7 @@ public:
 public:
 	static bool isZipFastq(string filename);
 	static bool isFastq(string filename);
-	static bool test();
+	// static bool test();
 
 private:
 	void init();

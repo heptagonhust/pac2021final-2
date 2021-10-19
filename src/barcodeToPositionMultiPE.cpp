@@ -333,16 +333,17 @@ void BarcodeToPositionMultiPE::consumerTask(Result* result) {
 		}
 	}
 
-	if (mFinishedThreads == mOptions->thread) {
-		if (mWriter1)
-			mWriter1->setInputCompleted();
-		if (mWriter2)
-			mWriter2->setInputCompleted();
-		if (mUnmappedWriter1)
-			mUnmappedWriter1->setInputCompleted();
-		if (mUnmappedWriter2)
-			mUnmappedWriter2->setInputCompleted();
-	}
+	assert(false);
+	// if (mFinishedThreads == mOptions->thread) {
+	// 	if (mWriter1)
+	// 		mWriter1->setInputCompleted();
+	// 	if (mWriter2)
+	// 		mWriter2->setInputCompleted();
+	// 	if (mUnmappedWriter1)
+	// 		mUnmappedWriter1->setInputCompleted();
+	// 	if (mUnmappedWriter2)
+	// 		mUnmappedWriter2->setInputCompleted();
+	// }
 	if (mOptions->verbose) {
 		string msg = "finished one thread";
 		loginfo(msg);

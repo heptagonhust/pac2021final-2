@@ -4,12 +4,8 @@
 #include <string.h>
 #include <string_view>
 
-#define FQ_BUF_SIZE (1ll<<35)
-#define FQ_BUF_SIZE_ONCE (1<<30)
 
-
-
-FastqReader::FastqReader(string filename, bool hasQuality, bool phred64)
+FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality, bool phred64)
 	: line_ptr_rb(1024), input_buffer_rb(4096 * 1024)
 {
 	mFilename = filename;
@@ -19,7 +15,7 @@ FastqReader::FastqReader(string filename, bool hasQuality, bool phred64)
 	mStdinMode = false;
 	mPhred64 = phred64;
 	mHasQuality = hasQuality;
-	mBufLarge = new char[FQ_BUF_SIZE];
+	mBufLarge = globalBufLarge;
 	mBufReadLength = 0;
 	mHasNoLineBreakAtEnd = false;
 	mStringProcessedLength = 1;
@@ -29,7 +25,6 @@ FastqReader::FastqReader(string filename, bool hasQuality, bool phred64)
 
 FastqReader::~FastqReader(){
 	close();
-	delete mBufLarge;
 }
 
 bool FastqReader::hasNoLineBreakAtEnd() {
@@ -324,24 +319,24 @@ bool FastqReader::isZipped(){
 	return mZipped;
 }
 
-bool FastqReader::test(){
-	FastqReader reader1("testdata/R1.fq");
-	FastqReader reader2("testdata/R1.fq.gz");
-	Read* r1 = NULL;
-	Read* r2 = NULL;
-	while(true){
-		r1=reader1.read();
-		r2=reader2.read();
-		if(r1 == NULL || r2 == NULL)
-			break;
-		if(r1->mSeq.mStr != r2->mSeq.mStr){
-			return false;
-		}
-		delete r1;
-		delete r2;
-	}
-	return true;
-}
+// bool FastqReader::test(){
+// 	FastqReader reader1("testdata/R1.fq");
+// 	FastqReader reader2("testdata/R1.fq.gz");
+// 	Read* r1 = NULL;
+// 	Read* r2 = NULL;
+// 	while(true){
+// 		r1=reader1.read();
+// 		r2=reader2.read();
+// 		if(r1 == NULL || r2 == NULL)
+// 			break;
+// 		if(r1->mSeq.mStr != r2->mSeq.mStr){
+// 			return false;
+// 		}
+// 		delete r1;
+// 		delete r2;
+// 	}
+// 	return true;
+// }
 
 FastqReaderPair::FastqReaderPair(FastqReader* left, FastqReader* right){
 	mLeft = left;
@@ -349,12 +344,13 @@ FastqReaderPair::FastqReaderPair(FastqReader* left, FastqReader* right){
 }
 
 FastqReaderPair::FastqReaderPair(string leftName, string rightName, bool hasQuality, bool phred64, bool interleaved){
+	assert(false);
 	mInterleaved = interleaved;
-	mLeft = new FastqReader(leftName, hasQuality, phred64);
+	mLeft = new FastqReader(leftName, NULL, hasQuality, phred64);
 	if(mInterleaved)
 		mRight = NULL;
 	else
-		mRight = new FastqReader(rightName, hasQuality, phred64);
+		mRight = new FastqReader(rightName, NULL, hasQuality, phred64);
 }
 
 FastqReaderPair::~FastqReaderPair(){

@@ -29,7 +29,7 @@ struct BufferedChar {
 		str[0] = '\0';
 	}
 	~BufferedChar() {
-		delete [] str;
+		// delete [] str;
 	}
 	void appendThenFree(const char * source) {
 		char *dest = str + length;
@@ -54,7 +54,7 @@ public:
 private:
 	void initOutput();
 	void closeOutput();
-	bool processPairEnd(ReadPairPack* pack, Result* result);
+	bool processPairEnd(int thread_id, ReadPairPack* pack, Result* result);
 	void initPackRepositoey();
 	void destroyPackRepository();
 	void producePack(ReadPairPack* pack);
@@ -71,13 +71,14 @@ public:
 	//unordered_map<uint64, Position*> misBarcodeMap;
 
 private:
-	std::mutex mOutputMtx;
+	// std::mutex mOutputMtx;
 	ofstream* mOutStream;
 	WriterThread* mWriter;
 	WriterThread* mUnmappedWriter;
 	bool filterFixedSequence = false;
 	FastqReader* left_reader;
 	FastqReader* right_reader;
+	char* mGlobalBufLarge;
 };
 
 #endif
