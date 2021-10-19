@@ -37,7 +37,7 @@ private:
 	void misMaskGenerate();
 	string positionToString(Position1* position);
 	string positionToString(Position* position);
-	BarcodeMap::iterator getMisOverlap(uint64 barcodeInt);
+	MapIter getMisOverlap(uint64 barcodeInt);
 	Position1* getNOverlap(string_view& barcodeString, uint8 Nindex);
 	int getNindex(string_view& barcodeString);
 	// void addDNB(uint64 barcodeInt);

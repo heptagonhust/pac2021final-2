@@ -180,7 +180,7 @@ long BarcodeProcessor::getBarcodeTypes()
 Position1* BarcodeProcessor::getPosition(uint64 barcodeInt)
 {
 	// string_view OK
-	BarcodeMap::iterator iter = bpmap->find(barcodeInt);
+	MapIter iter = bpmap->find(barcodeInt);
 	if (iter!=bpmap->end()) {
 		overlapReads++;
 		return &iter->second;
@@ -323,14 +323,14 @@ string BarcodeProcessor::positionToString(Position1* position){
 	return positionString.str();
 }
 
-BarcodeMap::iterator BarcodeProcessor::getMisOverlap(uint64 barcodeInt)
+MapIter BarcodeProcessor::getMisOverlap(uint64 barcodeInt)
 {
 	// string_view OK
 	uint64 misBarcodeInt;
 	int misCount = 0;
 	int misMaskIndex = 0;
-	BarcodeMap::iterator iter;
-	BarcodeMap::iterator overlapIter;
+	MapIter iter;
+	MapIter overlapIter;
 
 	for (int mis = 0; mis < mismatch; mis++){
 		misCount = 0;

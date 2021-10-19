@@ -11,10 +11,16 @@
 #include <mutex>
 #include "common.h"
 #include <parallel_hashmap/phmap.h>
+// #include "tbb/concurrent_hash_map.h"
+#include "tbb/concurrent_unordered_map.h"
 
 using namespace std;
 using phmap::parallel_flat_hash_map;
-typedef parallel_flat_hash_map<uint64, Position1> BarcodeMap;
+// typedef parallel_flat_hash_map<uint64, Position1> BarcodeMap;
+// typedef BarcodeMap::iterator MapIter;
+typedef tbb::concurrent_unordered_map<uint64, Position1> BarcodeMap;
+typedef BarcodeMap::iterator MapIter;
+// typedef BarcodeMap::iterator MutMapIter;
 
 inline bool starts_with(string const& value, string const& starting)
 {

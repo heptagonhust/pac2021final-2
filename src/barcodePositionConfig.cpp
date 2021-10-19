@@ -39,7 +39,8 @@ BarcodePositionConfig* BarcodePositionConfig::merge(BarcodePositionConfig** conf
 				config->bpmap[iter->first] = iter->second;
 			}
 			else if(config->bpmap.count(iter->first)>0){
-				config->bpmap.erase(iter->first);
+				// config->bpmap.erase(iter->first);
+				config->bpmap.unsafe_erase(iter->first);
 			}
 		}
 		configs[i]->barcodeSet.clear();
@@ -58,7 +59,8 @@ void BarcodePositionConfig::addBarcode(uint64 barcodeInt, Position1& pos)
 	}
 	else if (bpmap.count(barcodeInt) > 0) {
 		dupReads++;
-		bpmap.erase(barcodeInt);
+		// bpmap.erase(barcodeInt);
+		bpmap.unsafe_erase(barcodeInt);
 	}
 }
 

@@ -41,7 +41,7 @@ void BarcodePositionMap::dumpbpmap(string& mapOutFile) {
 	time_t start = time(NULL);
 	cout << "##########dump barcodeToPosition map begin..." << endl;
 	if (ends_with(mapOutFile, ".bin")) {
-		BarcodeMap::iterator mapIter = bpmap.begin();
+		MapIter mapIter = bpmap.begin();
 		bpmap.reserve(bpmap.size());
 		ofstream writer(mapOutFile, ios::out | ios::binary);
 		//boost::archive::binary_oarchive oa(writer);
@@ -65,7 +65,7 @@ void BarcodePositionMap::dumpbpmap(string& mapOutFile) {
 	}
 	else {
 		ofstream writer(mapOutFile);
-		BarcodeMap::iterator mapIter = bpmap.begin();
+		MapIter mapIter = bpmap.begin();
 		while (mapIter != bpmap.end()) {
 			writer << seqDecode(mapIter->first, barcodeLen) << "\t" << mapIter->second.x << "\t" << mapIter->second.y << endl;
 			mapIter++;
