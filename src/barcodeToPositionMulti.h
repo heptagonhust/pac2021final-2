@@ -18,34 +18,9 @@
 
 using namespace std;
 
-const int max_length_char_buffer = 1ll<<20;
 
-struct BufferedChar {
-	char *str;
-	size_t length;
-	BufferedChar() {
-		str = new char[max_length_char_buffer];
-		length = 0;
-		str[0] = '\0';
-	}
-	~BufferedChar() {
-		delete [] str;
-	}
-	void appendThenFree(const char * source) {
-		char *dest = str + length;
-		const char *toFree = source;
-    while (*source != '\0')
-    {
-				length++;
-				assert(length < max_length_char_buffer);
-        *dest = *source;
-        dest++;
-        source++;
-    }
-    *dest = '\0';
-		delete [] toFree;
-	}
-};
+
+
 class BarcodeToPositionMulti {
 public:
 	BarcodeToPositionMulti(Options* opt);
@@ -54,15 +29,15 @@ public:
 private:
 	void initOutput();
 	void closeOutput();
-	bool processPairEnd(ReadPairPack* pack, Result* result);
+	bool processPairEnd(ReadPairPack* pack, Result* result, RingbufWriter *mapped_out, RingbufWriter *unmapped_out);
 	void initPackRepositoey();
 	void destroyPackRepository();
 	void producePack(ReadPairPack* pack);
 	void consumePack(Result* result);
 	void producerTaskLeft(RingBufPair *rb, FastqReader *reader);
 	void producerTaskRight(RingBufPair *rb, FastqReader *reader);
-	void consumerTask(int thread_id, RingBufPair *rb, Result* result);
-	void writeTask(WriterThread* config);
+	void consumerTask(int thread_id, RingBufPair *rb, Result* result, RingbufWriter *mapped_out, RingbufWriter *unmapped_out);
+	void writeTask(WriterThread* config, RingbufWriter *writer_out);
 	
 public:
 	Options* mOptions;

@@ -5,10 +5,13 @@
 #include <stdlib.h>
 #include "zstd/zstd_zlibwrapper.h"
 #include "common.h"
+#include "ringbuf.hpp"
 #include <iostream>
 #include <fstream>
 
 using namespace std;
+
+const int max_length_char_buffer = 1ll<<20;
 
 class Writer{
 public:
@@ -36,6 +39,50 @@ private:
 	bool mZipped;
 	int mCompression;
 	bool haveToClose;
+};
+
+struct BufferedChar {
+	char *str;
+	size_t length;
+	BufferedChar() {
+		str = new char[max_length_char_buffer];
+		length = 0;
+		str[0] = '\0';
+	}
+	~BufferedChar() {
+		delete [] str;
+	}
+	void appendThenFree(const char * source) {
+		char *dest = str + length;
+		const char *toFree = source;
+    	while (*source != '\0')
+    	{
+			length++;
+			assert(length < max_length_char_buffer);
+        	*dest = *source;
+        	dest++;
+        	source++;
+    	}
+    	*dest = '\0';
+		delete [] toFree;
+	}
+};
+
+class RingbufWriter : public RingBuf<BufferedChar *> {
+
+private:
+	
+	bool completed {};
+
+public:
+
+	size_t write_count {};
+	size_t read_count {};
+
+	void setCompleted();
+
+	bool isCompleted() const;
+	
 };
 
 #endif

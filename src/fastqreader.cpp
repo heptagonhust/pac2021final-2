@@ -103,7 +103,7 @@ void FastqReader::stringProcess() {
 
 		// output string view
 		buff_size -= line_len;
-		*line_end = '\0';
+		// *line_end = '\0';
 		line_pack->lines[line_pack_size] = string_view(line_start, line_len);
 		line_pack_size++;
 
