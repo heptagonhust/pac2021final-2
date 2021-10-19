@@ -5,9 +5,7 @@
 #include <string_view>
 
 
-FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality, bool phred64)
-	: line_ptr_rb(1024), input_buffer_rb(4096 * 1024)
-{
+FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality, bool phred64) {
 	mFilename = filename;
 	mZipFileName = NULL;
 	mZipped = false;
@@ -53,6 +51,7 @@ void FastqReader::readToBufLarge() {
 			}
 		}
 	}
+	mBufLarge[mBufReadLength] = '\0';
 	stringProcess();
 }
 
