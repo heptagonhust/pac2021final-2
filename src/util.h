@@ -16,6 +16,8 @@ using namespace std;
 using phmap::parallel_flat_hash_map;
 typedef parallel_flat_hash_map<uint64, Position1> BarcodeMap;
 
+const int MAP_CAP = 261933015;
+
 inline bool starts_with(string const& value, string const& starting)
 {
 	if (starting.size() > value.size()) return false;
