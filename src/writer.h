@@ -11,7 +11,7 @@
 
 using namespace std;
 
-const int max_length_char_buffer = 1ll<<20;
+const int max_length_char_buffer = PACK_SIZE * 200;
 
 class Writer{
 public:

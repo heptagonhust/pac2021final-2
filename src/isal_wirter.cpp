@@ -20,6 +20,9 @@ IsalWriter::IsalWriter(const Options* opt, const string &filename, WriterInputRB
   if(fd == -1)
     error_exit("failed to open output file");
 
+  main = new std::thread(std::bind(&IsalWriter::single, this, inputs, opt->thread));
+  
+  /*
   worker_inputs = new RingBuf<IsalTask>*[nWorker];
   for(int i=0;i<nWorker;i++) {
     worker_inputs[i] = new RingBuf<IsalTask>(1);
@@ -30,21 +33,25 @@ IsalWriter::IsalWriter(const Options* opt, const string &filename, WriterInputRB
   for(int i=0;i<nWorker;i++) {
     threads[i] = new std::thread(std::bind(&IsalWriter::otherTask, this, i));
   }
-  main->detach();
+  */
 }
 
 void IsalWriter::join() {
+  /*
   for(int i=0;i<nWorker;i++) {
     threads[i]->join();
   }
+  */
+ main->join();
 }
 
 IsalWriter::~IsalWriter() {
   if(fd != -1)
     close(fd);
 
-  delete [] worker_inputs;
-  delete [] threads;
+  delete main;
+  //delete [] worker_inputs;
+  //delete [] threads;
 }
 
 int compress_level = 3;
@@ -74,6 +81,99 @@ static bool tryGetInput(WriterInputRB *inputs, bool *inputFinished, int nInputs,
   }
 
   return false;
+}
+
+void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
+  bool *inputFinished = new bool[nInputs];
+  for(int i=0;i<nInputs;i++)
+    inputFinished[i] = false;
+
+	struct isal_zstream stream;
+	struct isal_gzip_header gz_hdr;
+
+  uint8_t *level_buf = new uint8_t[level_size];
+
+  isal_gzip_header_init(&gz_hdr);
+	gz_hdr.os = UNIX;
+  // do not save file name and timestamp in compress
+
+  uint8_t header[32];
+  isal_deflate_init(&stream);
+  stream.avail_in = 0;
+	stream.flush = NO_FLUSH;
+	stream.level = compress_level;
+	stream.level_buf = level_buf;
+	stream.level_buf_size = level_size;
+	stream.gzip_flag = IGZIP_GZIP_NO_HDR;
+	stream.next_out = header;
+	stream.avail_out = 32;
+
+  isal_write_gzip_header(&stream, &gz_hdr);
+  int r = write(fd, header, stream.total_out);
+
+  uint32_t crc = 0;
+  uint32_t nread = 0;
+  int worker_id = 0;
+  
+  BufferedChar* input;
+  uint8_t *outputBuf = new uint8_t[ISAL_OUTPUT_BLOCK_SIZE];
+  bool allFinished;
+  while(true) {
+    if(tryGetInput(inputs, inputFinished, nInputs, input, allFinished)) {
+
+      nread += input->length;
+      crc = crc32_gzip_refl(crc, (uint8_t *)input->str, input->length);
+
+      isal_deflate_stateless_init(&stream);
+
+      stream.next_in = (uint8_t*)input->str;
+      stream.next_out = outputBuf;
+      stream.avail_in = input->length;
+      stream.avail_out = ISAL_OUTPUT_BLOCK_SIZE;
+      stream.end_of_stream = 0;
+      stream.flush = FULL_FLUSH;
+      stream.level = compress_level;
+      stream.level_buf = level_buf;
+      stream.level_buf_size = level_size;
+
+      int r = isal_deflate_stateless(&stream);
+      assert(r == COMP_OK);
+
+      write(fd, outputBuf, stream.total_out); // write out previ result
+      delete input;
+
+    } else if(allFinished) {
+      
+      break;
+    }
+  }
+
+  // Write gzip trailer
+  const char end[] = "\n";
+  char end_buff[512];
+
+  crc = crc32_gzip_refl(crc, (uint8_t *)end, sizeof(end) - 1);
+  nread += sizeof(end) - 1;
+  isal_deflate_stateless_init(&stream);
+  stream.next_in = (uint8_t*)end;
+  stream.next_out = (uint8_t*)end_buff;
+  stream.avail_in = sizeof(end) - 1;
+  stream.avail_out = sizeof(end_buff);
+  stream.end_of_stream = 1;
+  stream.flush = FULL_FLUSH;
+  stream.level = compress_level;
+  stream.level_buf = level_buf;
+  stream.level_buf_size = level_size;
+  r = isal_deflate_stateless(&stream);
+
+  write(fd, end_buff, stream.total_out);
+  
+  write(fd, &crc, sizeof(uint32_t));
+  write(fd, &nread, sizeof(uint32_t));
+  close(fd);
+
+  delete level_buf;
+  delete inputFinished;
 }
 
 void IsalWriter::mainTask(WriterInputRB *inputs, int nInputs) {
@@ -205,6 +305,7 @@ void IsalWriter::otherTask(int id) {
     int r = isal_deflate_stateless(&stream);
     assert(r == COMP_OK);
 
+    delete task->buffer;
     task->output_size = stream.total_out;
     input->dequeue();
   }

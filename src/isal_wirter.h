@@ -5,7 +5,7 @@
 #include "ringbuf.hpp"
 #include "writer.h"
 
-#define ISAL_BLOCK_SIZE 1024 * 1024
+#define ISAL_BLOCK_SIZE 32 * 1024 * 1024
 #define ISAL_OUTPUT_BLOCK_SIZE (ISAL_BLOCK_SIZE * 2)
 /*
 struct WriterInput {
@@ -34,7 +34,10 @@ private:
   int fd;
   RingBuf<IsalTask> **worker_inputs;
   std::thread **threads;
-
+  thread *main;
+  
   void mainTask(WriterInputRB *inputs, int nInputs);
   void otherTask(int id);
+
+  void single(WriterInputRB *inputs, int nInputs);
 };
