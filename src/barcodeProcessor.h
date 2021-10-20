@@ -22,9 +22,12 @@ public:
 	BarcodeProcessor();
 	~BarcodeProcessor();
 	bool process(Read* read1, Read* read2);
+	bool processToStrOnly(Read* read1, Read* read2,  ostream * mapped_out, ostream *unmapped_out);
 	void dumpDNBmap(string& dnbMapFile);
 private:
 	void addPositionToName(Read* r, Position1* position, pair<string_view, string_view>* umi = NULL);
+	void outputReadWithPosition(Read* r, Position1* position, pair<string_view, string_view>* umi, ostream *dst);
+	void outputRead(Read* r, Position1* position, pair<string_view, string_view>* umi, ostream *dst);
 	// void addPositionToNames(Read* r1, Read* r2, Position1* position, pair<string, string>* umi = NULL);
 	void  getUMI(Read* r, pair<string_view, string_view>& umi, bool isRead2=false);
 	void decodePosition(const uint32 codePos, pair<uint16, uint16>& decodePos);

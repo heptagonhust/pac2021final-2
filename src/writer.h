@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "zstd/zstd_zlibwrapper.h"
+#include "igzip/igzip_wrapper.h"
 #include "common.h"
 #include "ringbuf.hpp"
 #include <iostream>
@@ -17,11 +17,11 @@ class Writer{
 public:
 	Writer(string filename, int compression = 3);
 	Writer(ofstream* stream);
-	Writer(gzFile gzfile);
+	// Writer(gzFile gzfile);
 	~Writer();
 	bool isZipped();
-	bool writeString(string& s);
-	bool writeLine(string& linestr);
+	// bool writeString(string& s);
+	// bool writeLine(string& linestr);
 	bool write(char* strdata, size_t size);
 	string filename();
 
@@ -34,7 +34,7 @@ private:
 
 private:
 	string mFilename;
-	gzFile mZipFile;
+	char* mZipFileName;
 	ofstream* mOutStream;
 	bool mZipped;
 	int mCompression;

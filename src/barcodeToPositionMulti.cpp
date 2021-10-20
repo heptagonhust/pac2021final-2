@@ -1,16 +1,20 @@
 #include "barcodeToPositionMulti.h"
+#include "isal_wirter.h"
+
+#define GLOBAL_BUF_SIZE (1ll<<31)
 
 BarcodeToPositionMulti::BarcodeToPositionMulti(Options* opt)
 {
 	mOptions = opt;
 	mOutStream = NULL;
-	mZipFile = NULL;
 	mWriter = NULL;
 	mUnmappedWriter = NULL;
 	bool isSeq500 = opt->isSeq500;
+	mGlobalBufLarge = new char[GLOBAL_BUF_SIZE];
 
-	left_reader = new FastqReader(mOptions->transBarcodeToPos.in1);
-	right_reader = new FastqReader(mOptions->transBarcodeToPos.in2);
+	// left: [0, FQ_BUF_SIZE), right: [FQ_BUF_SIZE, 2*FQ_BUF_SIZE)
+	left_reader = new FastqReader(mOptions->transBarcodeToPos.in1, mGlobalBufLarge);
+	right_reader = new FastqReader(mOptions->transBarcodeToPos.in2, mGlobalBufLarge + FQ_BUF_SIZE);
 
 	mbpmap = new BarcodePositionMap(opt);
 	//barcodeProcessor = new BarcodeProcessor(opt, &mbpmap->bpmap);
@@ -22,6 +26,7 @@ BarcodeToPositionMulti::BarcodeToPositionMulti(Options* opt)
 
 BarcodeToPositionMulti::~BarcodeToPositionMulti()
 {
+	delete [] mGlobalBufLarge;
 	//if (fixedFilter) {
 	//	delete fixedFilter;
 	//}
@@ -30,7 +35,6 @@ BarcodeToPositionMulti::~BarcodeToPositionMulti()
 
 bool BarcodeToPositionMulti::process()
 {
-	initOutput();
 	RingBufPair pack_ringbufs[mOptions->thread];
 
 	std::thread producerLeft(std::bind(
@@ -46,39 +50,27 @@ bool BarcodeToPositionMulti::process()
 	}
 
 	std::thread** threads = new thread * [mOptions->thread];
-	RingBuf<BufferedChar*> unmapped_out[mOptions->thread];
-	RingBuf<BufferedChar*> mapped_out[mOptions->thread];
+	WriterInputRB unmapped_outs[mOptions->thread];
+	WriterInputRB mapped_outs[mOptions->thread];
 	for (int t = 0; t < mOptions->thread; t++) {
-		threads[t] = new std::thread(std::bind(&BarcodeToPositionMulti::consumerTask, this, t, &pack_ringbufs[t], results[t], &mapped_out[t], &unmapped_out[t]));
+		WriterInputRB *unmapped_out = NULL;
+		if(!mOptions->transBarcodeToPos.unmappedOutFile.empty())
+			unmapped_out = &unmapped_outs[t];
+		threads[t] = new std::thread(std::bind(&BarcodeToPositionMulti::consumerTask, this, t, &pack_ringbufs[t], results[t], &mapped_outs[t], unmapped_out));
 	}
 
-	std::thread* writerThread = NULL;
-	std::thread* unMappedWriterThread = NULL;
-	if(mWriter){
-		writerThread = new std::thread(std::bind(&BarcodeToPositionMulti::writeTask, this, mWriter, &mapped_out[0]));
-	}
-	if (mUnmappedWriter) {
-		unMappedWriterThread = new std::thread(std::bind(&BarcodeToPositionMulti::writeTask, this, mUnmappedWriter, &unmapped_out[0]));
-	}
 	producerLeft.detach();
 	producerRight.detach();
-	for (int t = 0; t < mOptions->thread; t++) {
-		threads[t]->join();
-		*mapped_out[t].enqueue_acquire() = nullptr;
-		mapped_out[t].enqueue();
-		*unmapped_out[t].enqueue_acquire() = nullptr;
-		unmapped_out[t].enqueue();
-	}	
 
-	// if (mWriter)
-	// 	mWriter->setInputCompleted();
-	// if (mUnmappedWriter)
-	// 	mUnmappedWriter->setInputCompleted();
+	mWriter = new IsalWriter(mOptions, mOptions->out, mapped_outs);
+	if (!mOptions->transBarcodeToPos.unmappedOutFile.empty()) {
+		mUnmappedWriter = new IsalWriter(mOptions, mOptions->transBarcodeToPos.unmappedOutFile, unmapped_outs);
+	}
 
-	if (writerThread)
-		writerThread->join();
-	if (unMappedWriterThread)
-		unMappedWriterThread->join();
+	if (mWriter)
+		mWriter->join();
+	if (mUnmappedWriter)
+		mUnmappedWriter->join();
 
 	if (mOptions->verbose)
 		loginfo("start to generate reports\n");
@@ -100,6 +92,7 @@ bool BarcodeToPositionMulti::process()
 	
 	//clean up
 	for (int t = 0; t < mOptions->thread; t++) {
+		threads[t]->join();
 		delete threads[t];
 		threads[t] = NULL;
 		delete results[t];
@@ -109,21 +102,14 @@ bool BarcodeToPositionMulti::process()
 	delete[] threads;
 	delete[] results;
 
-	if (writerThread)
-		delete writerThread;
-	if (unMappedWriterThread)
-		delete unMappedWriterThread;
+	// if (writerThread)
+	// 	delete writerThread;
+	// if (unMappedWriterThread)
+	// 	delete unMappedWriterThread;
 
 	closeOutput();
 
 	return true;
-}
-
-void BarcodeToPositionMulti::initOutput() {
-	mWriter = new WriterThread(mOptions->out, mOptions->compression);
-	if (!mOptions->transBarcodeToPos.unmappedOutFile.empty()) {
-		mUnmappedWriter = new WriterThread(mOptions->transBarcodeToPos.unmappedOutFile, mOptions->compression);
-	}
 }
 
 void BarcodeToPositionMulti::closeOutput()
@@ -138,7 +124,7 @@ void BarcodeToPositionMulti::closeOutput()
 	}
 }
 
-bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result, RingBuf<BufferedChar*> *mapped_out, RingBuf<BufferedChar*> *unmapped_out)
+bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result, WriterInputRB *mapped_out, WriterInputRB *unmapped_out)
 {
 	BufferedChar *outstr = new BufferedChar;
 	BufferedChar *unmappedOut = new BufferedChar;
@@ -327,7 +313,7 @@ void BarcodeToPositionMulti::producerTask(RingBuf<ReadPairPack> *rb) {
 }
 */
 
-void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result* result, RingBuf<BufferedChar*> *mapped_out, RingBuf<BufferedChar*> *unmapped_out) {
+void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result* result, WriterInputRB *mapped_out, WriterInputRB *unmapped_out) {
 	const int num_thread = mOptions->thread;	
 	while (true) {
 		ReadPairPack* pack = rb->dequeue_acquire();
@@ -342,7 +328,16 @@ void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result
 		}
 		rb->dequeue();
 	}
+	assert(unmapped_out == NULL);
 
+	BufferedChar**in = mapped_out->enqueue_acquire();
+	*in = NULL;
+	mapped_out->enqueue();
+	if(unmapped_out) {
+		BufferedChar**in = unmapped_out->enqueue_acquire();
+		*in = NULL;
+		unmapped_out->enqueue();
+	}
 	if (mOptions->verbose) {
 		string msg = "finished one thread";
 		loginfo(msg);
@@ -350,7 +345,8 @@ void BarcodeToPositionMulti::consumerTask(int thread_id, RingBufPair *rb, Result
 }
 
 void BarcodeToPositionMulti::writeTask(WriterThread* config, RingBuf<BufferedChar*> *writer_out) {
-	config->outputTask(writer_out, mOptions->thread);
+	assert(0); // deprecated
+	//config->outputTask(writer_out, mOptions->thread);
 
 	if (mOptions->verbose) {
 		string msg = config->getFilename() + " writer finished";

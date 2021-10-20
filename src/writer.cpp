@@ -1,4 +1,5 @@
 #include "writer.h"
+#include "igzip/igzip_wrapper.h"
 #include "util.h"
 #include "fastqreader.h"
 #include <string.h>
@@ -6,25 +7,25 @@
 Writer::Writer(string filename, int compression){
 	mCompression = compression;
 	mFilename = filename;
-	mZipFile = NULL;
+	mZipFileName = NULL;
 	mZipped = false;
 	haveToClose = true;
 	init();
 }
 
 Writer::Writer(ofstream* stream) {
-	mZipFile = NULL;
+	mZipFileName = NULL;
 	mZipped = false;
 	mOutStream = stream;
 	haveToClose = false;
 }
 
-Writer::Writer(gzFile gzfile) {
-	mOutStream = NULL;
-	mZipFile = gzfile;
-	mZipped = true;
-	haveToClose = false;
-}
+// Writer::Writer(gzFile gzfile) {
+// 	mOutStream = NULL;
+// 	mZipFile = gzfile;
+// 	mZipped = true;
+// 	haveToClose = false;
+// }
 
 Writer::~Writer(){
 	if(haveToClose) {
@@ -38,9 +39,7 @@ string Writer::filename(){
 
 void Writer::init(){
 	if (ends_with(mFilename, ".gz")){
-		mZipFile = gzopen(mFilename.c_str(), "w");
-        gzsetparams(mZipFile, mCompression, Z_DEFAULT_STRATEGY);
-        gzbuffer(mZipFile, 1024*1024);
+		mZipFileName = (char*)mFilename.c_str();
 		mZipped = true;
 	}
 	else {
@@ -50,49 +49,52 @@ void Writer::init(){
 	}
 }
 
-bool Writer::writeLine(string& linestr){
-	const char* line = linestr.c_str();
-	size_t size = linestr.length();
-	size_t written;
-	bool status;
-	if(mZipped){
-		written = gzwrite(mZipFile, line, size);
-		gzputc(mZipFile, '\n');
-		status = size == written;
-	}
-	else{
-		mOutStream->write(line, size);
-		mOutStream->put('\n');
-		status = !mOutStream->fail();
-	}
+// bool Writer::writeLine(string& linestr){
+// 	const char* line = linestr.c_str();
+// 	size_t size = linestr.length();
+// 	size_t written;
+// 	bool status;
+// 	if(mZipped){
+// 		written = gzwrite(mZipFile, line, size);
+// 		gzputc(mZipFile, '\n');
+// 		status = size == written;
+// 	}
+// 	else{
+// 		mOutStream->write(line, size);
+// 		mOutStream->put('\n');
+// 		status = !mOutStream->fail();
+// 	}
 
-	return status;
-}
+// 	return status;
+// }
 
-bool Writer::writeString(string& str){
-	const char* strdata = str.c_str();
-	size_t size = str.length();
-	size_t written;
-	bool status;
-	if(mZipped){
-		written = gzwrite(mZipFile, strdata, size);
-		status = size == written;
-	}
-	else{
-		mOutStream->write(strdata, size);
-		status = !mOutStream->fail();
-	}
+// bool Writer::writeString(string& str){
+// 	const char* strdata = str.c_str();
+// 	size_t size = str.length();
+// 	size_t written;
+// 	bool status;
+// 	if(mZipped){
+// 		written = gzwrite(mZipFile, strdata, size);
+// 		status = size == written;
+// 	}
+// 	else{
+// 		mOutStream->write(strdata, size);
+// 		status = !mOutStream->fail();
+// 	}
 
-	return status;
-}
+// 	return status;
+// }
 
 bool Writer::write(char* strdata, size_t size) {
 	size_t written;
 	bool status;
 	
 	if(mZipped){
-		written = gzwrite(mZipFile, strdata, size);
-		status = size == written;
+		if (compress_file((unsigned char*)strdata, size, mZipFileName, 3, 8) == 0) {
+			status = true;
+		} else {
+			status = false;
+		}
 	}
 	else{
 		mOutStream->write(strdata, size);
@@ -103,10 +105,8 @@ bool Writer::write(char* strdata, size_t size) {
 
 void Writer::close(){
 	if (mZipped){
-		if (mZipFile){
-			gzflush(mZipFile, Z_FINISH);
-			gzclose(mZipFile);
-			mZipFile = NULL;
+		if (mZipFileName){
+			mZipFileName = NULL;
 		}
 	}
 	else if(mOutStream) {

@@ -16,10 +16,9 @@
 #include "ringbuf.hpp"
 #include "ringbuf_pair.h"
 
+#include "isal_wirter.h"
+
 using namespace std;
-
-
-
 
 class BarcodeToPositionMulti {
 public:
@@ -29,14 +28,14 @@ public:
 private:
 	void initOutput();
 	void closeOutput();
-	bool processPairEnd(ReadPairPack* pack, Result* result, RingBuf<BufferedChar*> *mapped_out, RingBuf<BufferedChar*> *unmapped_out);
+	bool processPairEnd(ReadPairPack* pack, Result* result, WriterInputRB *mapped_out, WriterInputRB *unmapped_out);
 	void initPackRepositoey();
 	void destroyPackRepository();
 	void producePack(ReadPairPack* pack);
 	void consumePack(Result* result);
 	void producerTaskLeft(RingBufPair *rb, FastqReader *reader);
 	void producerTaskRight(RingBufPair *rb, FastqReader *reader);
-	void consumerTask(int thread_id, RingBufPair *rb, Result* result, RingBuf<BufferedChar*> *mapped_out, RingBuf<BufferedChar*> *unmapped_out);
+	void consumerTask(int thread_id, RingBufPair *rb, Result* result, WriterInputRB *mapped_out, WriterInputRB *unmapped_out);
 	void writeTask(WriterThread* config, RingBuf<BufferedChar*> *writer_out);
 	
 public:
@@ -46,14 +45,14 @@ public:
 	//unordered_map<uint64, Position*> misBarcodeMap;
 
 private:
-	std::mutex mOutputMtx;
-	gzFile mZipFile;
+	// std::mutex mOutputMtx;
 	ofstream* mOutStream;
-	WriterThread* mWriter;
-	WriterThread* mUnmappedWriter;
+	IsalWriter* mWriter;
+	IsalWriter* mUnmappedWriter;
 	bool filterFixedSequence = false;
 	FastqReader* left_reader;
 	FastqReader* right_reader;
+	char* mGlobalBufLarge;
 };
 
 #endif

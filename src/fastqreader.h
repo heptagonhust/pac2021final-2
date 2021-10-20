@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "read.h"
-#include "zstd/zstd_zlibwrapper.h"
+#include "igzip/igzip_wrapper.h"
 #include "common.h"
 #include <iostream>
 #include <fstream>
@@ -12,6 +12,10 @@
 #include <thread>
 #include <functional>
 #include <string_view>
+
+#define FQ_BUF_SIZE (1ll<<29)
+#define FQ_BUF_SIZE_ONCE (1<<29)
+
 
 #define LINE_PACK_SIZE 4096
 struct LinePack {
@@ -23,35 +27,35 @@ struct LinePack {
 
 class FastqReader{
 public:
-	FastqReader(string filename, bool hasQuality = true, bool phred64=false);
+	FastqReader(string filename, char* globalBufLarge, bool hasQuality = true, bool phred64=false);
 	~FastqReader();
 	bool isZipped();
 
-	void getBytes(size_t& bytesRead, size_t& bytesTotal);
+	// void getBytes(size_t& bytesRead, size_t& bytesTotal);
 
 	//this function is not thread-safe
 	//do not call read() of a same FastqReader object from different threads concurrently
 	Read* read();
 	Read* read(Read* dst);
-	bool eof();
+	// bool eof();
 	bool hasNoLineBreakAtEnd();
 
 public:
 	static bool isZipFastq(string filename);
 	static bool isFastq(string filename);
-	static bool test();
+	// static bool test();
 
 private:
 	void init();
 	void close();
 	const string_view& getLine();
-	void clearLineBreaks(char* line);
+	// void clearLineBreaks(char* line);
 	void readToBufLarge();
 	void stringProcess();
 
 private:
 	string mFilename;
-	gzFile mZipFile;
+	char* mZipFileName;
 	FILE* mFile;
 	bool mZipped;
 	bool mHasQuality;

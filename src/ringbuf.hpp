@@ -22,6 +22,7 @@ public:
   ~RingBuf();
 
   T* enqueue_acquire();
+  T* try_enqueue_acquire(bool &success);
   void enqueue();
 
   T* dequeue_acquire();
@@ -60,6 +61,15 @@ template <typename T>
 T* RingBuf<T>::enqueue_acquire()
 {
   sem_wait(&empty);
+  return &bufs[end];
+}
+
+template <typename T> 
+T* RingBuf<T>::try_enqueue_acquire(bool &success)
+{
+  int r = sem_trywait(&empty);
+  success = r == 0;
+  
   return &bufs[end];
 }
 

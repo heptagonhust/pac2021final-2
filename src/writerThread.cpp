@@ -1,16 +1,16 @@
 #include "writerThread.h"
 #include "barcodeToPositionMulti.h"
 
+#include <iterator>
 
-WriterThread::WriterThread(string filename, int compressionLevel)
-	: rb(512 * 1024 * 16)
-{
+WriterThread::WriterThread(string filename, int compressionLevel) {
 	compression = compressionLevel;
 
 	mWriter1 = NULL;
 
 	mInputCompleted = false;
 	mFilename = filename;
+	bufferToCompress = NULL;
 
 	initWriter(filename);
 }
@@ -20,57 +20,53 @@ WriterThread::~WriterThread()
 	cleanup();
 }
 
-bool WriterThread::setInputCompleted() {
-	OutputStrPack *pack = rb.enqueue_acquire();
-	pack->size = 0;
-		
-	rb.enqueue();
-	return true;
+inline size_t AppendStringListToChar(StringList* list, char* buffer) {
+	size_t merged = 0;
+	while (list->next != NULL) {
+		memcpy(buffer + merged, list->data, list->data_size);
+		merged += list->data_size;
+		delete [] list->data;
+		list->data = NULL;
+		list = list->next;
+	}
+	return merged;
 }
 
-void WriterThread::outputTask(RingBuf<BufferedChar*> *writer_out, int threadNum) {
-	bool threadCompleted[threadNum] = {false};
-	while(true) {
-		bool allCompleted = true;
-		for(int i = 0; i < threadNum; i++) {
-			if(threadCompleted[i])
-				continue;
-			allCompleted = false;
+size_t WriterThread::setInputCompleted(int thread_num, char* bufLarge) {
+	assert(bufferToCompress == NULL);
+	bufferToCompress = bufLarge;
+	bufferTotalSize = 0;
 
-			bool sucess;
-			BufferedChar *out_str = *writer_out[i].try_dequeue_acquire(sucess);
-			if(!sucess)
-				continue;
-			if(out_str == nullptr) {
-				threadCompleted[i] = true;
-			} else {
-				mWriter1->write(out_str->str, out_str->length);
-				delete out_str;
-				
-				writer_out[i].dequeue();
-			}
-		}
-
-		if(allCompleted) {
-			break;
-		}
+	size_t last_append = 0;
+	for (int i = 0; i < thread_num; ++ i) {
+		last_append = AppendStringListToChar(&headStrList[i], bufLarge);
+		bufLarge += last_append;
+		bufferTotalSize += last_append;
 	}
+	*bufLarge = '\0';
+
+	return bufferTotalSize;
 }
 
-void WriterThread::input(const char* data, size_t size) {
-	size_t n_outputed = 0;
-	while(n_outputed < size) {
-		int n = size - n_outputed;
-		n = n < WRITER_OUTPUT_PACK_SIZE ? n : WRITER_OUTPUT_PACK_SIZE;
+void WriterThread::outputTask() {
+	mWriter1->write(bufferToCompress, bufferTotalSize);
+}
 
-		OutputStrPack *pack = rb.enqueue_acquire();
+void WriterThread::input(int thread_id, const char* data, size_t size) {
+	headStrList[thread_id].append((char*)data, size);
+	// size_t n_outputed = 0;
+	// while(n_outputed < size) {
+	// 	int n = size - n_outputed;
+	// 	n = n < WRITER_OUTPUT_PACK_SIZE ? n : WRITER_OUTPUT_PACK_SIZE;
 
-		pack->size = n;
-		memcpy(pack->data, &data[n_outputed], n);
+	// 	OutputStrPack *pack = rb.enqueue_acquire();
 
-		rb.enqueue();
-		n_outputed += n;
-	}
+	// 	pack->size = n;
+	// 	memcpy(pack->data, &data[n_outputed], n);
+
+	// 	rb.enqueue();
+	// 	n_outputed += n;
+	// }
 }
 
 void WriterThread::cleanup() {
@@ -94,10 +90,10 @@ void WriterThread::initWriter(ofstream* stream) {
 	mWriter1 = new Writer(stream);
 }
 
-void WriterThread::initWriter(gzFile gzfile) {
-	deleteWriter();
-	mWriter1 = new Writer(gzfile);
-}
+// void WriterThread::initWriter(gzFile gzfile) {
+// 	deleteWriter();
+// 	mWriter1 = new Writer(gzfile);
+// }
 
 long WriterThread::bufferLength() {
 	assert(0);

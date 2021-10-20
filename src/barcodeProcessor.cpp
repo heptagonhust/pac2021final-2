@@ -21,6 +21,70 @@ BarcodeProcessor::~BarcodeProcessor()
 
 }
 
+bool BarcodeProcessor::processToStrOnly(Read* read1, Read* read2,  ostream * mapped_out, ostream *unmapped_out)
+{
+	// string_view OK
+	totalReads++;
+	string_view barcode;
+	string_view barcodeQ;
+	if (mOptions->transBarcodeToPos.barcodeRead == 1){
+		barcode = read1->mSeq.mStr.substr(mOptions->barcodeStart, mOptions->barcodeLen);
+		barcodeQ = read1->mQuality.substr(mOptions->barcodeStart, mOptions->barcodeLen);
+	}else if (mOptions->transBarcodeToPos.barcodeRead == 2){
+		barcode = read2->mSeq.mStr.substr(mOptions->barcodeStart, mOptions->barcodeLen);
+		barcodeQ = read2->mQuality.substr(mOptions->barcodeStart, mOptions->barcodeLen);
+	}else{
+		error_exit("barcodeRead must be 1 or 2 . please check the --barcodeRead option you give");
+	}
+	barcodeStatAndFilter(barcodeQ);
+	Position1* position = getPosition(barcode);
+
+	if (position != nullptr){
+		mMapToSlideRead++ ;
+		bool umiPassFilter = true;
+		if (mOptions->transBarcodeToPos.umiStart >= 0 && mOptions->transBarcodeToPos.umiLen > 0){
+			pair<string_view, string_view> umi;
+			if (mOptions->transBarcodeToPos.umiRead == 1){
+				getUMI(read1, umi);
+			}else{
+				getUMI(read2, umi, true);
+			}
+			umiPassFilter = umiStatAndFilter(umi);
+			if (!mOptions->transBarcodeToPos.PEout){
+				if(umiPassFilter && mapped_out)
+					outputReadWithPosition(read2, position, &umi, mapped_out);
+				else if(unmapped_out)
+					outputRead(read2, position, &umi, unmapped_out);
+			}
+			assert(!mOptions->transBarcodeToPos.PEout);
+			// Comment this function to support type `string` transformation.
+			// else{
+			// 	addPositionToNames(read1, read2, position, &umi);
+			// }
+		}
+		else{
+			assert(false);
+			// Comment this function to support type `string` transformation.
+			// if (!mOptions->transBarcodeToPos.PEout){
+			// 	addPositionToName(read2, position);
+			// }
+			// assert(!mOptions->transBarcodeToPos.PEout);
+
+			// Comment this function to support type `string` transformation.
+			// else{
+			// 	addPositionToNames(read1, read2, position);
+			// }
+		}
+		// Comment this function to support type `string` transformation.
+		// if(! mOptions->transBarcodeToPos.mappedDNBOutFile.empty())
+		// 	addDNB(encodePosition(position->x, position->y));
+
+		return umiPassFilter;
+	}
+	return false;
+
+}
+
 bool BarcodeProcessor::process(Read* read1, Read* read2)
 {
 	// string_view OK
@@ -103,6 +167,35 @@ void BarcodeProcessor::addPositionToName(Read* r, Position1* position, pair<stri
 		str >> *nonVolatileBuf;
 		r->mName = string_view{*nonVolatileBuf};
 	}
+}
+
+
+void BarcodeProcessor::outputReadWithPosition(Read* r, Position1* position, pair<string_view, string_view>* umi, ostream *dst)
+{
+	ostream &str = *dst;
+
+	// output name
+	int readTagPos = r->mName.find("/");
+	if (readTagPos!=string_view::npos){
+		str << r->mName.substr(0, readTagPos);
+	}else{
+		str << r->mName;
+	}
+	if (umi == NULL)
+		assert(false);
+		// r->mName = readName + "|||CB:Z:" + position_tag;
+	else {
+		str << "|||CB:Z:" << position->x << "_" << position->y << "|||UR:Z:" << umi->first << "|||UY:Z:" << umi->second << endl;
+	}
+	str << r->mSeq.mStr << endl << r->mStrand << endl << r->mQuality << endl;
+	//
+}
+
+void BarcodeProcessor::outputRead(Read* r, Position1* position, pair<string_view, string_view>* umi, ostream *dst)
+{
+	ostream &str = *dst;
+	str << r->mName << endl << r->mSeq.mStr << endl << r->mStrand << endl << r->mQuality << endl;
+	//
 }
 
 // void BarcodeProcessor::addPositionToNames(Read* r1, Read* r2, Position1* position, pair<string, string>* umi){
