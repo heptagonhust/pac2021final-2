@@ -13,8 +13,8 @@
 #include <functional>
 #include <string_view>
 
-#define FQ_BUF_SIZE (1ll<<29)
-#define FQ_BUF_SIZE_ONCE (1<<29)
+#define FQ_BUF_SIZE (1ll<<35)
+#define FQ_BUF_SIZE_ONCE (1<<30)
 
 
 #define LINE_PACK_SIZE 4096
@@ -37,8 +37,6 @@ public:
 	//do not call read() of a same FastqReader object from different threads concurrently
 	Read* read();
 	Read* read(Read* dst);
-	// bool eof();
-	bool hasNoLineBreakAtEnd();
 
 public:
 	static bool isZipFastq(string filename);
@@ -63,9 +61,7 @@ private:
 	RingBuf<LinePack> line_ptr_rb;
 	RingBuf<size_t> input_buffer_rb;
 	bool mStdinMode;
-	bool mHasNoLineBreakAtEnd;
 	size_t mBufReadLength;
-	size_t mStringProcessedLength;
 	char *mBufLarge;
 	bool mNoLineLeftInRingBuf;
 

@@ -5,7 +5,7 @@
 #include <string_view>
 
 
-FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality, bool phred64)
+FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality, bool phred64) 
 	: line_ptr_rb(1024), input_buffer_rb(4096 * 1024)
 {
 	mFilename = filename;
@@ -16,19 +16,13 @@ FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality,
 	mPhred64 = phred64;
 	mHasQuality = hasQuality;
 	mBufLarge = globalBufLarge;
+	mNoLineLeftInRingBuf = false;
 	mBufReadLength = 0;
-	mHasNoLineBreakAtEnd = false;
-	mStringProcessedLength = 1;
-
 	init();
 }
 
 FastqReader::~FastqReader(){
 	close();
-}
-
-bool FastqReader::hasNoLineBreakAtEnd() {
-	return mHasNoLineBreakAtEnd;
 }
 
 void FastqReader::readToBufLarge() {
@@ -53,6 +47,7 @@ void FastqReader::readToBufLarge() {
 			}
 		}
 	}
+	mBufLarge[mBufReadLength] = '\0';
 	stringProcess();
 }
 
@@ -60,43 +55,40 @@ void FastqReader::stringProcess() {
 	LinePack* line_pack = line_ptr_rb.enqueue_acquire();
 	size_t line_pack_size = 0;
 
-	char *line_end, *line_start;
-	size_t buff_size = mBufReadLength;
-	line_start = line_end = mBufLarge;
+	char* ptr = &mBufLarge[0];
+	char* line_start = ptr;
+	size_t processed = 0;
+	int line_len = 0;
+	while (processed < mBufReadLength) {
+		if (*ptr == '\n' || *ptr == '\r') {
+			*ptr = '\0';
 
-	while(true) {
-		// find end of line
-		line_end = line_start;
-		int line_len = 0;
-		while(*line_end != '\n' && *line_end != '\r' && *line_end != '\0') {
-			line_len++, line_end++;
+			// add the line into pack
+			assert(line_len != 0);
+			line_pack->lines[line_pack_size] = string_view(line_start, line_len);
+			line_pack_size++;
+
+			if(line_pack_size >= LINE_PACK_SIZE) {
+				line_pack->size = line_pack_size;
+				line_ptr_rb.enqueue();
+
+				line_pack = line_ptr_rb.enqueue_acquire();
+				line_pack_size = 0;
+			}
+
+			// trim redundant line break like \n or \r
+			ptr ++;
+			while (*ptr == '\n' || *ptr == '\r') {
+				ptr ++;
+				processed ++;
+			}
+			line_start = ptr;
+			line_len = 0;
+		} else {
+			ptr ++;
+			line_len ++;
 		}
-
-		// output string view
-		buff_size -= line_len;
-		// *line_end = '\0';
-		line_pack->lines[line_pack_size] = string_view(line_start, line_len);
-		line_pack_size++;
-
-		if(line_pack_size >= LINE_PACK_SIZE) {
-			line_pack->size = line_pack_size;
-			line_ptr_rb.enqueue();
-
-			line_pack = line_ptr_rb.enqueue_acquire();
-			line_pack_size = 0;
-		}
-
- 		// case: a b c \0 -- break
-		// cases: a b c \n ... \n \0 -- trim delim in the ends as follows then break
-		if (!buff_size) break;
-
-		// find start of next line
-		line_len = 1; // borrows variable line_len, exactly means delim length
-		line_start = line_end + 1;
-		while(*line_start == '\n') {
-			line_start++, line_len++;
-		}
-		buff_size -= line_len;
+		processed ++;
 	}
 
 	if(line_pack_size != 0) {

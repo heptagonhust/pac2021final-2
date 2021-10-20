@@ -1,7 +1,7 @@
 #include "barcodeToPositionMulti.h"
 #include "isal_wirter.h"
 
-#define GLOBAL_BUF_SIZE (1ll<<31)
+#define GLOBAL_BUF_SIZE (1ll<<36)
 
 BarcodeToPositionMulti::BarcodeToPositionMulti(Options* opt)
 {
