@@ -1,8 +1,8 @@
 #include "isa-l.h"
 
-#include "isal_wirter.h"
+#include "isal_writer.h"
 #include <cstdio>
-#include "unistd.h"
+#include <unistd.h>
 #include <thread>
 #include <functional>
 
@@ -13,7 +13,7 @@ const int nWorker = 4;
 
 IsalWriter::IsalWriter(const Options* opt, const string &filename, WriterInputRB *inputs) {
   if(!ends_with(filename, ".gz"))
-    error_exit("...");
+    error_exit("output file shuld end with .gz ...");
   
 
   fd = open(filename.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);

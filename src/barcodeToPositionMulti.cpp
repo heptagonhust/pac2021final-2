@@ -1,5 +1,5 @@
 #include "barcodeToPositionMulti.h"
-#include "isal_wirter.h"
+#include "isal_writer.h"
 
 #define GLOBAL_BUF_SIZE (1ll<<36)
 

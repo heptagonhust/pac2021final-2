@@ -16,7 +16,7 @@
 #include "ringbuf.hpp"
 #include "ringbuf_pair.h"
 
-#include "isal_wirter.h"
+#include "isal_writer.h"
 
 using namespace std;
 
