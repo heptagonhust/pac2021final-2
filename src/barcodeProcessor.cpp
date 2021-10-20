@@ -327,8 +327,7 @@ void BarcodeProcessor::misMaskGenerate()
 		for (int i = 0; i < barcodeLen; i++) {
 			for (uint64 j = 1; j < 4; j++) {
 				uint64 misMaskInt = j << i * 2;
-				misMask[index] = misMaskInt;
-				index++;
+				misMaskSet.insert(misMaskInt);
 			}
 		}
 		if (mOptions->verbose) {
@@ -337,7 +336,6 @@ void BarcodeProcessor::misMaskGenerate()
 		}
 	}
 	if (mismatch == 2) {
-		misMaskSet.clear();
 		for (int i = 0; i < barcodeLen; i++) {
 			for (uint64 j = 1; j < 4; j++) {
 				uint64 misMaskInt1 = j << i * 2;

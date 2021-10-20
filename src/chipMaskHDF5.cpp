@@ -155,7 +155,17 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
     status = H5Dclose(datasetID);
     status = H5Fclose(fileID);
     
+
+#define OMP_NUM_THREADS 32
     
+    sem_t hash_mutex[OMP_NUM_THREADS];
+    for(int i = 0; i < OMP_NUM_THREADS; i++) {
+        sem_init(&hash_mutex[i], 0, 1);
+    }
+
+    size_t modulo = bpMap.subcnt() / OMP_NUM_THREADS;
+
+    #pragma omp parallel for 
     for (uint32 r = 0; r < dims[0]; r++){
         //bpMatrix[r] = new uint64*[dims[1]];
         for (uint32 c = 0; c< dims[1]; c++){
@@ -168,18 +178,27 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
                     if (barcodeInt == 0){
                         continue;
                     }
+                    int thread_id = bpMap.subidx(barcodeInt) / modulo;
+                    sem_wait(&hash_mutex[thread_id]);
                     bpMap[barcodeInt] = position;
+                    sem_post(&hash_mutex[thread_id]);
                 }
             }else{
                 uint64 barcodeInt = bpMatrix_buffer[r*dims[1]+c];
                 if (barcodeInt == 0){
                     continue;
                 }
+                int thread_id = bpMap.subidx(barcodeInt) / modulo;
+                sem_wait(&hash_mutex[thread_id]);
                 bpMap[barcodeInt] = position;
+                sem_post(&hash_mutex[thread_id]);
             }           
         }
     }
     
+    for(int i = 0; i < OMP_NUM_THREADS; i++) {
+        sem_init(&hash_mutex[i]);
+    }
     /*
     for (int r = 0; r<dims[0]; r++){
         for (int c = 0; c<dims[1]; c++){
