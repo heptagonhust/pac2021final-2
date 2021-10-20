@@ -4,7 +4,7 @@ set(PROJECT_NAME ST_BarcodeMap-0.0.1)
 project(${PROJECT_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
-
+add_subdirectory(src/igzip)
 find_library(ZSTD_LIB zstd REQUIRED)
 find_path(ZSTD_INC zstd.h REQUIRED)
 message("zstd library found in ${ZSTD_LIB}")
@@ -15,7 +15,7 @@ find_package(Threads REQUIRED)
 find_package(HDF5 REQUIRED)
 find_package(Boost 1.70 REQUIRED COMPONENTS serialization)
 
-add_definitions("-g" "-O3" "-DZWRAP_USE_ZSTD")
+add_definitions("-g" "-O3" "-DZWRAP_USE_ZSTD" "-gdwarf-4")
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${ZSTD_INC})
 include_directories(third_party/parallel-hashmap)
@@ -29,6 +29,7 @@ target_link_libraries(
   Boost::serialization
   HDF5::HDF5
   Threads::Threads
+  igzipwrap
   ZLIB::ZLIB
   ${ZSTD_LIB}
 )

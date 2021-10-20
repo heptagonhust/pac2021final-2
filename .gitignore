@@ -7,3 +7,5 @@ data/*
 *.h5
 obj
 ST_BarcodeMap-0.0.1
+.vscode
+.history
