@@ -195,11 +195,13 @@ string_view FastqReader::getLine(){
 		
 		ptr++;
 	}
+
+	line_start = ptr;
 	return string_view(ptr0, ptr - ptr0);
 
 	end_of_file:
 	mNoLineLeft = true;
-	return string_view{};
+	return string_view{nullptr, 0};
 
 }
 

@@ -14,7 +14,7 @@
 #include <string_view>
 #include "isal_reader.h"
 
-#define FQ_BUF_SIZE (1ll<<28)
+#define FQ_BUF_SIZE (1ll<<35)
 #define FQ_BUF_SIZE_ONCE (1<<30)
 
 class FastqReader{

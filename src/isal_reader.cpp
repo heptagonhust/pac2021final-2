@@ -38,7 +38,6 @@ size_t IsalReader::task(ReaderOutputRB *output, uint8_t* dst) {
 	state.crc_flag = ISAL_GZIP_NO_HDR_VER;
 	state.next_in = inbuf;
 	state.avail_in = fread(state.next_in, 1, inbuf_size, f);
-  printf("avail_in %d bytes\n", state.avail_in);  
 
   // Actually read and save the header info
 	ret = isal_read_gzip_header(&state, &gz_hdr);
@@ -49,13 +48,12 @@ size_t IsalReader::task(ReaderOutputRB *output, uint8_t* dst) {
   size_t total = 0;
   ssize_t n = 0;
   do {
-    if(state.avail_in = 0) {
-      n = fread(state.next_in, 1, inbuf_size, f);
+    if(state.avail_in == 0) {
+      n = fread(inbuf, 1, inbuf_size, f);
       state.next_in = inbuf;
       state.avail_in = n;
     }
 
-    printf("avail_in %d bytes\n", state.avail_in);  
     state.next_out = outbuf;
 		state.avail_out = outbuf_size;
 
@@ -79,7 +77,7 @@ size_t IsalReader::task(ReaderOutputRB *output, uint8_t* dst) {
   // Add the following to look for and decode additional concatenated files
 	if (!feof(f) && state.avail_in == 0) {
 		state.next_in = inbuf;
-		state.avail_in = fread(state.next_in, 1, inbuf_size, f);
+		state.avail_in = fread(inbuf, 1, inbuf_size, f);
 	}
 
 	while (state.avail_in > 0 && state.next_in[0] == 31) {
@@ -93,7 +91,7 @@ size_t IsalReader::task(ReaderOutputRB *output, uint8_t* dst) {
 		do {
 			if (state.avail_in == 0 && !feof(f)) {
 				state.next_in = inbuf;
-				state.avail_in = fread(state.next_in, 1, inbuf_size, f);
+				state.avail_in = fread(inbuf, 1, inbuf_size, f);
 			}
 
 			state.next_out = outbuf;
@@ -117,7 +115,7 @@ size_t IsalReader::task(ReaderOutputRB *output, uint8_t* dst) {
 
 		if (!feof(f) && state.avail_in == 0) {
 			state.next_in = inbuf;
-			state.avail_in = fread(state.next_in, 1, inbuf_size, f);
+			state.avail_in = fread(inbuf, 1, inbuf_size, f);
 		}
 	}
 
@@ -125,7 +123,7 @@ size_t IsalReader::task(ReaderOutputRB *output, uint8_t* dst) {
 		error_exit("igzip: Error does not contain a complete gzip file\n");
 	else
 		success = 1;
-
+  
   *output->enqueue_acquire() = 0;
   output->enqueue();
 
