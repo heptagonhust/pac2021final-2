@@ -6,7 +6,7 @@
 
 
 FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality, bool phred64) 
-	: line_ptr_rb(1024), input_buffer_rb(4096 * 1024)
+	: reader_output(4096 * 1024)
 {
 	mFilename = filename;
 	mZipFileName = NULL;
@@ -16,8 +16,10 @@ FastqReader::FastqReader(string filename, char *globalBufLarge, bool hasQuality,
 	mPhred64 = phred64;
 	mHasQuality = hasQuality;
 	mBufLarge = globalBufLarge;
-	mNoLineLeftInRingBuf = false;
+	mNoLineLeft = false;
 	mBufReadLength = 0;
+
+	line_start = decompress_buffer_end = globalBufLarge;
 	init();
 }
 
@@ -28,9 +30,9 @@ FastqReader::~FastqReader(){
 void FastqReader::readToBufLarge() {
 	if(mZipped) {
 		// mBufLarge may overflow, take care!
-		if (decompress_file(mZipFileName, (unsigned char*)mBufLarge, &mBufReadLength) != 0) {
-			error_exit("Error to read gzip file: " + mFilename);
-		}
+		isal_reader = new IsalReader(mZipFileName, &reader_output, (uint8_t*)mBufLarge);
+		mBufReadLength = isal_reader->task(&reader_output, (uint8_t*)mBufLarge);
+
 		if (mBufReadLength >= FQ_BUF_SIZE) {
 			assert(false);
 		}
@@ -38,6 +40,8 @@ void FastqReader::readToBufLarge() {
 		size_t mBufDataLen;
 		for(mBufReadLength = 0; mBufReadLength < FQ_BUF_SIZE; mBufReadLength += mBufDataLen) {
 			mBufDataLen = fread(mBufLarge+mBufReadLength, 1, FQ_BUF_SIZE_ONCE, mFile);
+			*reader_output.enqueue_acquire() = mBufDataLen;
+    	reader_output.enqueue();
 			if(mBufDataLen == 0) {
 				break;
 			}
@@ -48,9 +52,8 @@ void FastqReader::readToBufLarge() {
 		}
 	}
 	mBufLarge[mBufReadLength] = '\0';
-	stringProcess();
 }
-
+/*
 void FastqReader::stringProcess() {
 	LinePack* line_pack = line_ptr_rb.enqueue_acquire();
 	size_t line_pack_size = 0;
@@ -103,7 +106,7 @@ void FastqReader::stringProcess() {
 	line_pack->lines[0] = string_view(nullptr, 0);
 	line_ptr_rb.enqueue();
 }
-
+*/
 void FastqReader::init(){
 	if (ends_with(mFilename, ".gz")){
 		mZipFileName = (char*)mFilename.c_str();
@@ -151,25 +154,53 @@ void FastqReader::init(){
 // 	}
 // }
 
-const string_view& FastqReader::getLine(){
-	LinePack *line_pack = line_pack_outputing;
-	size_t n = line_pack_n_outputed;
+string_view FastqReader::getLine(){
+	char* ptr0 , *ptr;
 
-	if(!line_pack || n >= line_pack->size) {
-		if(line_pack) line_ptr_rb.dequeue();
-
-		line_pack_outputing = line_pack = line_ptr_rb.dequeue_acquire();
-		line_pack_n_outputed = n = 0;
-
-		if(line_pack->size == 0) {
-			mNoLineLeftInRingBuf = true;
-			return line_pack->lines[0];
+	if(mNoLineLeft)
+		goto end_of_file;
+	
+	// find start of next line
+	ptr = line_start;
+	while(true) {
+		if(ptr >= decompress_buffer_end) {
+			size_t n = *reader_output.dequeue_acquire();
+			reader_output.dequeue();
+			if(n == 0) 
+				goto end_of_file;
+			
+			decompress_buffer_end += n;
 		}
+
+		if(*ptr != '\n')
+			break;
+		
+		ptr++;
 	}
 
-	const string_view& line = line_pack->lines[n];
-	line_pack_n_outputed = n + 1;
-	return line;
+	// find end of line
+	ptr0 = ptr;
+	while(true) {
+		if(ptr >= decompress_buffer_end) {
+			size_t n = *reader_output.dequeue_acquire();
+			reader_output.dequeue();
+			if(n == 0) 
+				goto end_of_file;
+			
+			decompress_buffer_end += n;
+		}
+
+		if(*ptr == '\n' || *ptr == '\r' || *ptr == '\0')
+			break;
+		
+		ptr++;
+	}
+	return string_view(ptr0, ptr - ptr0);
+
+	end_of_file:
+	mNoLineLeft = true;
+	return string_view{};
+
 }
 
 // bool FastqReader::eof() {
@@ -187,12 +218,12 @@ Read* FastqReader::read(){
 			return NULL;
 	}
 
-	if (mNoLineLeftInRingBuf)
+	if (mNoLineLeft)
 		return NULL;
 
 	string_view name = getLine();
 	// name should start with @
-	while((name.empty() && !mNoLineLeftInRingBuf) || (!name.empty() && name[0]!='@')){
+	while((name.empty() && !mNoLineLeft) || (!name.empty() && name[0]!='@')){
 		name = getLine();
 	}
 
@@ -228,12 +259,12 @@ Read* FastqReader::read(Read* dst){
 			return NULL;
 	}
 
-	if (mNoLineLeftInRingBuf)
+	if (mNoLineLeft)
 		return NULL;
 
 	string_view name = getLine();
 	// name should start with @
-	while((name.empty() && !mNoLineLeftInRingBuf) || (!name.empty() && name[0]!='@')){
+	while((name.empty() && !mNoLineLeft) || (!name.empty() && name[0]!='@')){
 		name = getLine();
 	}
 

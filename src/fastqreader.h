@@ -12,18 +12,10 @@
 #include <thread>
 #include <functional>
 #include <string_view>
+#include "isal_reader.h"
 
-#define FQ_BUF_SIZE (1ll<<35)
+#define FQ_BUF_SIZE (1ll<<28)
 #define FQ_BUF_SIZE_ONCE (1<<30)
-
-
-#define LINE_PACK_SIZE 4096
-struct LinePack {
-	string_view lines[LINE_PACK_SIZE];
-	int size;
-	LinePack() : size(0) {}
-};
-
 
 class FastqReader{
 public:
@@ -46,10 +38,10 @@ public:
 private:
 	void init();
 	void close();
-	const string_view& getLine();
+	string_view getLine();
 	// void clearLineBreaks(char* line);
 	void readToBufLarge();
-	void stringProcess();
+	//void stringProcess();
 
 private:
 	string mFilename;
@@ -58,15 +50,15 @@ private:
 	bool mZipped;
 	bool mHasQuality;
 	bool mPhred64;
-	RingBuf<LinePack> line_ptr_rb;
-	RingBuf<size_t> input_buffer_rb;
+	ReaderOutputRB reader_output;
 	bool mStdinMode;
 	size_t mBufReadLength;
 	char *mBufLarge;
-	bool mNoLineLeftInRingBuf;
-
-	LinePack* line_pack_outputing = nullptr;
-	size_t line_pack_n_outputed = 0;
+	bool mNoLineLeft;
+	IsalReader* isal_reader;
+	// inter state to read line
+	char* decompress_buffer_end = NULL;
+	char* line_start = NULL;
 };
 
 class FastqReaderPair{

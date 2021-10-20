@@ -1,5 +1,6 @@
 #pragma once
 #include <thread>
+#include <cstdio>
 
 #include "options.h"
 #include "ringbuf.hpp"
@@ -11,13 +12,11 @@ typedef RingBuf<size_t> ReaderOutputRB;
 class IsalReader {
 public:
  
-  IsalReader(const Options* opt, const string& filename, ReaderOutputRB *output, uint8_t* dst);
+  IsalReader(const char* filename, ReaderOutputRB *output, uint8_t* dst);
   ~IsalReader();
 
-  void join();
+  size_t task(ReaderOutputRB *output, uint8_t* dst);
 private:
-  thread *main;
 
-  int fd;
-  void task(ReaderOutputRB *output, uint8_t* dst);
+  FILE* f;
 };
