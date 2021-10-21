@@ -12,6 +12,7 @@
 #include <boost/thread/mutex.hpp>
 #include "common.h"
 #include <parallel_hashmap/phmap.h>
+#include <boost/pool/pool_alloc.hpp>
 
 #define SUBMAP_NUM_EXP2 4
 
@@ -19,7 +20,7 @@ using namespace std;
 using phmap::parallel_flat_hash_map;
 typedef parallel_flat_hash_map<uint64, Position1, phmap::priv::hash_default_hash<uint64>, 
                             phmap::priv::hash_default_eq<uint64>, 
-                            std::allocator<std::pair<const uint64, Position1>>, SUBMAP_NUM_EXP2, phmap::NullMutex> BarcodeMap;
+                            boost::pool_allocator<std::pair<const uint64, Position1>>, SUBMAP_NUM_EXP2, phmap::NullMutex> BarcodeMap;
 
 inline bool starts_with(string const& value, string const& starting)
 {

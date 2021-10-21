@@ -1,6 +1,6 @@
 #include "barcodePositionMap.h"
-
-BarcodePositionMap::BarcodePositionMap(Options* opt)
+const int MAP_CAP = 300000000;
+BarcodePositionMap::BarcodePositionMap(Options* opt) : bpmap(MAP_CAP)
 {
 	mOptions = opt;
 	maskFile = opt->maskFile;
