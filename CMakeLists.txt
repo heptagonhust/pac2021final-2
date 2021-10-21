@@ -31,5 +31,6 @@ target_link_libraries(
   Threads::Threads
   igzipwrap
   ZLIB::ZLIB
+  aio
   ${ZSTD_LIB}
 )

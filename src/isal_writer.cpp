@@ -8,6 +8,10 @@
 
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <libaio.h>
+
+const int MAX_IO = 2e8/1024;
+io_context_t write_ctx;
 
 const int nWorker = 4;
 
@@ -20,8 +24,10 @@ IsalWriter::IsalWriter(const Options* opt, const string &filename, WriterInputRB
   if(fd == -1)
     error_exit("failed to open output file");
 
+  io_setup(MAX_IO, &write_ctx);
+
   main = new std::thread(std::bind(&IsalWriter::single, this, inputs, opt->thread));
-  
+
   /*
   worker_inputs = new RingBuf<IsalTask>*[nWorker];
   for(int i=0;i<nWorker;i++) {
@@ -83,6 +89,10 @@ static bool tryGetInput(WriterInputRB *inputs, bool *inputFinished, int nInputs,
   return false;
 }
 
+void write_callback(io_context_t ctx, struct iocb *iocb, long res, long res2) {
+  delete iocb->data;
+}
+
 void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
   bool *inputFinished = new bool[nInputs];
   for(int i=0;i<nInputs;i++)
@@ -140,12 +150,29 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
       assert(r == COMP_OK);
 
       write(fd, outputBuf, stream.total_out); // write out previ result
+      auto p = new iocb;
+      auto &io = *p;
+      io_prep_pwrite(&io, fd, outputBuf, stream.total_out, 0);
+      io.data = outputBuf;
+      io_submit(write_ctx, 1, &p);
+      io_set_callback(&io, write_callback);
       delete input;
 
     } else if(allFinished) {
       
       break;
     }
+  }
+
+  io_event e;
+  timespec timeout;
+  while(1) {
+    timeout.tv_sec = 120;
+    timeout.tv_sec = 0;
+    if(io_getevents(write_ctx, 0, 1, &e, &timeout)==1) {
+      break;
+    }
+    sleep(1);
   }
 
   // Write gzip trailer
