@@ -177,7 +177,8 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
                         if (barcodeInt == 0){
                             continue;
                         }
-                        int load_thread_id = bpMap.subidx(barcodeInt) / modulo;
+                        int hash_val = bpMap.hash(barcodeInt);
+                        int load_thread_id = bpMap.subidx(hash_val) / modulo;
                         if(load_thread_id == thread_id) {
                             bpMap[barcodeInt] = position;
                         }
@@ -187,7 +188,8 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
                     if (barcodeInt == 0){
                         continue;
                     }
-                    int load_thread_id = bpMap.subidx(barcodeInt) / modulo;
+                    int hash_val = bpMap.hash(barcodeInt);
+                    int load_thread_id = bpMap.subidx(hash_val) / modulo;
                     if(load_thread_id == thread_id) {
                         bpMap[barcodeInt] = position;
                     }
