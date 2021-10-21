@@ -18,9 +18,9 @@
 
 using namespace std;
 using phmap::parallel_flat_hash_map;
-typedef parallel_flat_hash_map<uint64, Position1, phmap::priv::hash_default_hash<uint64>, 
-                            phmap::priv::hash_default_eq<uint64>, 
-                            boost::pool_allocator<std::pair<const uint64, Position1>>, SUBMAP_NUM_EXP2, phmap::NullMutex> BarcodeMap;
+typedef parallel_flat_hash_map<uint64, Position1,  std::hash<uint64>, 
+														phmap::priv::hash_default_eq<uint64>,
+                            boost::fast_pool_allocator<std::pair<const uint64, Position1>>, SUBMAP_NUM_EXP2, phmap::NullMutex> BarcodeMap;
 
 inline bool starts_with(string const& value, string const& starting)
 {
