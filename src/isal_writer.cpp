@@ -152,10 +152,10 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
       // write(fd, outputBuf, stream.total_out); // write out previ result
       auto p = new iocb;
       auto &io = *p;
-      io_prep_pwrite(&io, fd, outputBuf, stream.total_out, 0);
+      io_prep_pwrite(p, fd, outputBuf, stream.total_out, 0);
       io.data = outputBuf;
+      io_set_callback(p, write_callback);
       io_submit(write_ctx, 1, &p);
-      io_set_callback(&io, write_callback);
       ++cnt;
       delete input;
 
