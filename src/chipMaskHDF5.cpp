@@ -92,7 +92,7 @@ herr_t ChipMaskHDF5::writeDataSet(std::string chipID, slideRange& sliderange, Ba
     status = H5Sclose(attributeSpace);
     status = H5Sclose(attributeSpace1);
     status = H5Aclose(attributeID);
-    status = H5Aclose(attributeID1);
+    status = H5Aclose(attrpibuteID1);
 
     //write matrix data to hdf5 file dataset
     status = H5Dwrite(datasetID, H5T_NATIVE_UINT64, memdataspaceID, dataspaceID, H5P_DEFAULT, &bpMatrix_buffer[0]);
@@ -159,7 +159,7 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
     status = H5Fclose(fileID);
     
 
-    auto loadHashMap = [&bpMap, bpMatrix_buffer, dims, rank](const int &thread_id) {
+    auto loadHashMap = [&bpMap, bpMatrix_buffer, dims, rank, segment](const int &thread_id) {
 
         const int submap_cnt = bpMap.subcnt();
 
@@ -170,21 +170,8 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
             for (uint32 c = 0; c < dims[1]; c++){
                 //bpMatrix[r][c] = bpMatrix_buffer + r*dims[1]*dims[2] + c*dims[2];
                 Position1 position = {c, r};
-                if (rank >= 3 ){               
-                    int segment = dims[2];
-                    for (int s = 0; s <segment; s++){
-                        uint64 barcodeInt = bpMatrix_buffer[r*dims[1]*segment + c*segment + s];
-                        if (barcodeInt == 0){
-                            continue;
-                        }
-                        int hash_val = bpMap.hash(barcodeInt);
-                        int load_thread_id = bpMap.subidx(hash_val) / modulo;
-                        if(load_thread_id == thread_id) {
-                            bpMap[barcodeInt] = position;
-                        }
-                    }
-                } else{
-                    uint64 barcodeInt = bpMatrix_buffer[r*dims[1]+c];
+                for (int s = 0; s < segment; s++){
+                    uint64 barcodeInt = bpMatrix_buffer[r*dims[1]*segment + c*segment + s];
                     if (barcodeInt == 0){
                         continue;
                     }
@@ -193,7 +180,8 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
                     if(load_thread_id == thread_id) {
                         bpMap[barcodeInt] = position;
                     }
-                }           
+                }
+                
             }
         }
     };
