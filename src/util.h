@@ -24,7 +24,12 @@ using phmap::parallel_flat_hash_map;
 
 typedef parallel_flat_hash_map<uint64, Position1, std::hash<uint64>,
                                      phmap::priv::hash_default_eq<uint64>,
-                                     boost::fast_pool_allocator<std::pair<uint64, Position> > > BarcodeMap;
+                                     boost::fast_pool_allocator<std::pair<uint64, Position>,
+									 							boost::default_user_allocator_new_delete,
+									  							boost::details::pool::null_mutex, 
+																MAP_CAP, 
+																0 > 
+									 > BarcodeMap;
 
 inline bool starts_with(string const& value, string const& starting)
 {
