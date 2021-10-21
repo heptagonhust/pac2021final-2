@@ -122,7 +122,7 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
   int r = write(fd, header, stream.total_out);
 
   uint32_t crc = 0;
-  uint32_t nread = 0;
+  uint32_t nread = 0, cnt = 0;
   int worker_id = 0;
   
   BufferedChar* input;
@@ -156,6 +156,7 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
       io.data = outputBuf;
       io_submit(write_ctx, 1, &p);
       io_set_callback(&io, write_callback);
+      ++cnt;
       delete input;
 
     } else if(allFinished) {
@@ -166,10 +167,12 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
 
   io_event e;
   timespec timeout;
+  uint ecnt = 0;
+  timeout.tv_sec = 120;
+  timeout.tv_nsec = 0;
   while(1) {
-    timeout.tv_sec = 120;
-    timeout.tv_nsec = 0;
-    if(io_getevents(write_ctx, 0, 1, &e, &timeout)==1) {
+    ecnt += io_getevents(write_ctx, 0, 1, &e, &timeout);
+    if(ecnt==cnt) {
       break;
     }
     sleep(1);
