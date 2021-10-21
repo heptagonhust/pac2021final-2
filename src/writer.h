@@ -52,20 +52,27 @@ struct BufferedChar {
 	~BufferedChar() {
 		delete [] str;
 	}
-	void appendThenFree(const char * source) {
-		char *dest = str + length;
-		const char *toFree = source;
-    	while (*source != '\0')
-    	{
-			length++;
-			assert(length < max_length_char_buffer);
-        	*dest = *source;
-        	dest++;
-        	source++;
-    	}
-    	*dest = '\0';
-		delete [] toFree;
+	char* tryAppend() {
+		return str+length;
 	}
+	void completeAppend(size_t sz) {
+		length += sz;
+		assert(length < max_length_char_buffer);
+	}
+	// void appendThenFree(const char * source) {
+	// 	char *dest = str + length;
+	// 	const char *toFree = source;
+  //   	while (*source != '\0')
+  //   	{
+	// 		length++;
+	// 		assert(length < max_length_char_buffer);
+  //       	*dest = *source;
+  //       	dest++;
+  //       	source++;
+  //   	}
+  //   	*dest = '\0';
+	// 	delete [] toFree;
+	// }
 };
 
 #endif

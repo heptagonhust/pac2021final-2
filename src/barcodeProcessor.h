@@ -21,11 +21,11 @@ public:
 	BarcodeProcessor(Options* opt, BarcodeMap* mbpmap);
 	BarcodeProcessor();
 	~BarcodeProcessor();
-	bool process(Read* read1, Read* read2);
+	char* process(Read* read1, Read* read2);
 	bool processToStrOnly(Read* read1, Read* read2,  ostream * mapped_out, ostream *unmapped_out);
 	void dumpDNBmap(string& dnbMapFile);
 private:
-	void addPositionToName(Read* r, Position1* position, pair<string_view, string_view>* umi = NULL);
+	char* addPositionToName(Read* r, Position1* position, pair<string_view, string_view>* umi = NULL);
 	void outputReadWithPosition(Read* r, Position1* position, pair<string_view, string_view>* umi, ostream *dst);
 	void outputRead(Read* r, Position1* position, pair<string_view, string_view>* umi, ostream *dst);
 	// void addPositionToNames(Read* r1, Read* r2, Position1* position, pair<string, string>* umi = NULL);

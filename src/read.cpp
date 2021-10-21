@@ -2,6 +2,7 @@
 #include <sstream>
 #include <string_view>
 #include "util.h"
+#include <cstring>
 
 Read::Read(string_view name, string_view seq, string_view strand, string_view quality, bool phred64){
 	mName = name;
@@ -190,20 +191,21 @@ inline void string_view_append(char *dst, string_view* src) {
 	*dst = '\0';
 }
 
-char* Read::toNewCharPointer() {
+size_t Read::toExistedCharPointer(char* name, char* str) {
 	// mName + "\n" + mSeq.mStr + "\n" + mStrand + "\n" + mQuality + "\n";
-	size_t nameLen = mName.length(), seqLen = mSeq.mStr.length(),
+	size_t nameLen = strlen(name), seqLen = mSeq.mStr.length(),
 				strandLen = mStrand.length(), qualityLen = mQuality.length();
-	char *str = new char[nameLen + seqLen + strandLen + qualityLen + 5];
-	char *ret = str;
-	string_view_append(str, &mName);
+	// string_view_append(str, &mName);
+	strncpy(str, name, nameLen);
+	str[nameLen] = '\n';
 	str += nameLen + 1;
 	string_view_append(str, &mSeq.mStr);
 	str += seqLen + 1;
 	string_view_append(str, &mStrand);
 	str += strandLen + 1;
 	string_view_append(str, &mQuality);
-	return ret;
+
+	return nameLen + seqLen + strandLen + qualityLen + 4;
 }
 
 // string Read::toStringWithTag(string tag) {

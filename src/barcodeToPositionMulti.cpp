@@ -128,7 +128,6 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result, 
 {
 	BufferedChar *outstr = new BufferedChar;
 	BufferedChar *unmappedOut = new BufferedChar;
-	bool hasPosition;
 	bool fixedFiltered;
 	const int count = min(pack->count_right, pack->count_left);
 	for (int p = 0; p < count; p++) {
@@ -142,12 +141,14 @@ bool BarcodeToPositionMulti::processPairEnd(ReadPairPack* pack, Result* result, 
 				continue;
 			}
 		}
-		hasPosition = result->mBarcodeProcessor->process(or1, or2);
-		if (hasPosition) {
-			outstr->appendThenFree(or2->toNewCharPointer());
+		char *hasPositionAsName = result->mBarcodeProcessor->process(or1, or2);
+		if (hasPositionAsName != nullptr) {
+			char* storePos = outstr->tryAppend();
+			outstr->completeAppend(or2->toExistedCharPointer(hasPositionAsName, storePos));
 		}
 		else if (mUnmappedWriter) {
-			unmappedOut->appendThenFree(or2->toNewCharPointer());
+			char* storePos = unmappedOut->tryAppend();
+			unmappedOut->completeAppend(or2->toExistedCharPointer(hasPositionAsName, storePos));
 		}
 	}
 

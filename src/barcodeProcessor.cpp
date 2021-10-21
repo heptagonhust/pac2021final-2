@@ -85,8 +85,9 @@ bool BarcodeProcessor::processToStrOnly(Read* read1, Read* read2,  ostream * map
 
 }
 
-bool BarcodeProcessor::process(Read* read1, Read* read2)
+char* BarcodeProcessor::process(Read* read1, Read* read2)
 {
+	char* updateName = nullptr;
 	// string_view OK
 	totalReads++;
 	string_view barcode;
@@ -115,7 +116,7 @@ bool BarcodeProcessor::process(Read* read1, Read* read2)
 			}
 			umiPassFilter = umiStatAndFilter(umi);
 			if (!mOptions->transBarcodeToPos.PEout){
-				addPositionToName(read2, position, &umi);
+				updateName = addPositionToName(read2, position, &umi);
 			}
 			assert(!mOptions->transBarcodeToPos.PEout);
 			// Comment this function to support type `string` transformation.
@@ -139,14 +140,14 @@ bool BarcodeProcessor::process(Read* read1, Read* read2)
 		// Comment this function to support type `string` transformation.
 		// if(! mOptions->transBarcodeToPos.mappedDNBOutFile.empty())
 		// 	addDNB(encodePosition(position->x, position->y));
-
-		return umiPassFilter;
+		if (umiPassFilter) return updateName;
+		else return nullptr;
 	}
-	return false;
+	return nullptr;
 
 }
 
-void BarcodeProcessor::addPositionToName(Read* r, Position1* position, pair<string_view, string_view>* umi)
+char* BarcodeProcessor::addPositionToName(Read* r, Position1* position, pair<string_view, string_view>* umi)
 {
 	// string_view OK
 	string position_tag = positionToString(position);
@@ -163,10 +164,14 @@ void BarcodeProcessor::addPositionToName(Read* r, Position1* position, pair<stri
 		// r->mName = readName + "|||CB:Z:" + position_tag;
 	else {
 		str << "|||CB:Z:" << position_tag << "|||UR:Z:" << umi->first << "|||UY:Z:" << umi->second;
-		string *nonVolatileBuf = new string{};
-		str >> *nonVolatileBuf;
-		r->mName = string_view{*nonVolatileBuf};
+		string temp{};
+		str >> temp;
+		char *updateName = new char[temp.length()];
+		sprintf(updateName, "%s", temp.c_str());
+		// r->mName = string_view{*nonVolatileBuf};
+		return updateName;
 	}
+	return nullptr;
 }
 
 

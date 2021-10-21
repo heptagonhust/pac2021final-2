@@ -30,7 +30,7 @@ public:
     // int lowQualCount(int qual=20);
     int length();
     // string toString(); // replace it with toNewCharPointer
-    char* toNewCharPointer();
+    size_t toExistedCharPointer(char* name, char* pos);
     // string toStringWithTag(string tag);
     // void resize(int len);
     // void convertPhred64To33();
