@@ -161,18 +161,18 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
 
     auto loadHashMap = [&bpMap, bpMatrix_buffer, dims, rank](const int &thread_id) {
 
-        const int submap_cnt = 1 << SUBMAP_NUM_EXP2;
+        const int submap_cnt = bpMap.subcnt();
 
         int modulo = submap_cnt / LOAD_THREADS;
 
         for (uint32 r = 0; r < dims[0]; r++){
             //bpMatrix[r] = new uint64*[dims[1]];
-            for (uint32 c = 0; c< dims[1]; c++){
+            for (uint32 c = 0; c < dims[1]; c++){
                 //bpMatrix[r][c] = bpMatrix_buffer + r*dims[1]*dims[2] + c*dims[2];
                 Position1 position = {c, r};
                 if (rank >= 3 ){               
                     int segment = dims[2];
-                    for (int s = 0; s<segment; s++){
+                    for (int s = 0; s <segment; s++){
                         uint64 barcodeInt = bpMatrix_buffer[r*dims[1]*segment + c*segment + s];
                         if (barcodeInt == 0){
                             continue;
@@ -198,14 +198,18 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
         }
     };
 
-    std::unique_ptr<std::thread> load_threads[LOAD_THREADS];
+    std::thread *load_threads[LOAD_THREADS];
 
     for (int i=0; i < LOAD_THREADS; i++) {
-        load_threads[i].reset(new std::thread(loadHashMap, i));
+        load_threads[i] = new std::thread(loadHashMap, i);
     }
 
     for(int i = 0; i < LOAD_THREADS; i++) {
         load_threads[i]->join();
+    }
+
+    for(int i = 0; i < LOAD_THREADS; i++) {
+        delete load_threads;
     }
 
     /*
