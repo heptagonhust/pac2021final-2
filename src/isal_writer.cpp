@@ -126,7 +126,6 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
   int worker_id = 0;
   
   BufferedChar* input;
-  uint8_t *outputBuf = new uint8_t[ISAL_OUTPUT_BLOCK_SIZE];
   bool allFinished;
   while(true) {
     if(tryGetInput(inputs, inputFinished, nInputs, input, allFinished)) {
@@ -136,6 +135,7 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
 
       isal_deflate_stateless_init(&stream);
 
+      uint8_t *outputBuf = new uint8_t[ISAL_OUTPUT_BLOCK_SIZE];
       stream.next_in = (uint8_t*)input->str;
       stream.next_out = outputBuf;
       stream.avail_in = input->length;
@@ -149,7 +149,7 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
       int r = isal_deflate_stateless(&stream);
       assert(r == COMP_OK);
 
-      write(fd, outputBuf, stream.total_out); // write out previ result
+      // write(fd, outputBuf, stream.total_out); // write out previ result
       auto p = new iocb;
       auto &io = *p;
       io_prep_pwrite(&io, fd, outputBuf, stream.total_out, 0);
