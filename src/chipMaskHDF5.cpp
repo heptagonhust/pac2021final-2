@@ -209,7 +209,7 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
     }
 
     for(int i = 0; i < LOAD_THREADS; i++) {
-        delete load_threads;
+        delete load_threads[i];
     }
 
     /*
