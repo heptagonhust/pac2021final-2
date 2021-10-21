@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "igzip/igzip_wrapper.h"
 #include "common.h"
 #include "ringbuf.hpp"
 #include <iostream>
@@ -22,7 +21,7 @@ public:
 	bool isZipped();
 	// bool writeString(string& s);
 	// bool writeLine(string& linestr);
-	bool write(char* strdata, size_t size);
+	// bool write(char* strdata, size_t size);
 	string filename();
 
 public:

@@ -1,5 +1,4 @@
 #include "fastqreader.h"
-#include "igzip/igzip_wrapper.h"
 #include "util.h"
 #include <string.h>
 #include <string_view>

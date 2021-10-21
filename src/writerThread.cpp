@@ -49,7 +49,7 @@ size_t WriterThread::setInputCompleted(int thread_num, char* bufLarge) {
 }
 
 void WriterThread::outputTask() {
-	mWriter1->write(bufferToCompress, bufferTotalSize);
+	// mWriter1->write(bufferToCompress, bufferTotalSize);
 }
 
 void WriterThread::input(int thread_id, const char* data, size_t size) {

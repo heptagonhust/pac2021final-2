@@ -1,5 +1,4 @@
 #include "writer.h"
-#include "igzip/igzip_wrapper.h"
 #include "util.h"
 #include "fastqreader.h"
 #include <string.h>
@@ -85,23 +84,23 @@ void Writer::init(){
 // 	return status;
 // }
 
-bool Writer::write(char* strdata, size_t size) {
-	size_t written;
-	bool status;
+// bool Writer::write(char* strdata, size_t size) {
+// 	size_t written;
+// 	bool status;
 	
-	if(mZipped){
-		if (compress_file((unsigned char*)strdata, size, mZipFileName, 3, 8) == 0) {
-			status = true;
-		} else {
-			status = false;
-		}
-	}
-	else{
-		mOutStream->write(strdata, size);
-		status = !mOutStream->fail();
-	}
-	return status;
-}
+// 	if(mZipped){
+// 		if (compress_file((unsigned char*)strdata, size, mZipFileName, 3, 8) == 0) {
+// 			status = true;
+// 		} else {
+// 			status = false;
+// 		}
+// 	}
+// 	else{
+// 		mOutStream->write(strdata, size);
+// 		status = !mOutStream->fail();
+// 	}
+// 	return status;
+// }
 
 void Writer::close(){
 	if (mZipped){

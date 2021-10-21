@@ -1,4 +1,5 @@
 #include "chipMaskHDF5.h"
+#include <semaphore.h>
 
 ChipMaskHDF5::ChipMaskHDF5(std::string FileName){
     fileName = FileName;
@@ -105,6 +106,8 @@ herr_t ChipMaskHDF5::writeDataSet(std::string chipID, slideRange& sliderange, Ba
     return status;
 }
 
+
+
 void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
     herr_t status;
     //open dataset with datasetName
@@ -124,7 +127,7 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
     hid_t dtype_id = H5Dget_type(datasetID);
     hid_t plistID = H5Dget_create_plist(datasetID);
     int rank = H5Sget_simple_extent_ndims(dspaceID);
-    hsize_t dims[rank];
+    hsize_t *dims = new hsize_t[rank];
     status = H5Sget_simple_extent_dims(dspaceID, dims, NULL);
 
     uint64 matrixLen = 1;
@@ -155,31 +158,48 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
     status = H5Dclose(datasetID);
     status = H5Fclose(fileID);
     
-    
-    for (uint32 r = 0; r < dims[0]; r++){
-        //bpMatrix[r] = new uint64*[dims[1]];
-        for (uint32 c = 0; c< dims[1]; c++){
-            //bpMatrix[r][c] = bpMatrix_buffer + r*dims[1]*dims[2] + c*dims[2];
-            Position1 position = {c, r};
-            if (rank >= 3 ){               
-                segment = dims[2];
-                for (int s = 0; s<segment; s++){
+
+    auto loadHashMap = [&bpMap, bpMatrix_buffer, dims, rank, segment](const int &thread_id) {
+
+        const int submap_cnt = bpMap.subcnt();
+
+        int modulo = submap_cnt / LOAD_THREADS;
+
+        for (uint32 r = 0; r < dims[0]; r++){
+            //bpMatrix[r] = new uint64*[dims[1]];
+            for (uint32 c = 0; c < dims[1]; c++){
+                //bpMatrix[r][c] = bpMatrix_buffer + r*dims[1]*dims[2] + c*dims[2];
+                Position1 position = {c, r};
+                for (int s = 0; s < segment; s++){
                     uint64 barcodeInt = bpMatrix_buffer[r*dims[1]*segment + c*segment + s];
                     if (barcodeInt == 0){
                         continue;
                     }
-                    bpMap[barcodeInt] = position;
+                    int hash_val = bpMap.hash(barcodeInt);
+                    int load_thread_id = bpMap.subidx(hash_val) / modulo;
+                    if(load_thread_id == thread_id) {
+                        bpMap.insert(make_pair(barcodeInt, position));
+                    }
                 }
-            }else{
-                uint64 barcodeInt = bpMatrix_buffer[r*dims[1]+c];
-                if (barcodeInt == 0){
-                    continue;
-                }
-                bpMap[barcodeInt] = position;
-            }           
+                
+            }
         }
+    };
+
+    std::thread *load_threads[LOAD_THREADS];
+
+    for (int i=0; i < LOAD_THREADS; i++) {
+        load_threads[i] = new std::thread(loadHashMap, i);
     }
-    
+
+    for(int i = 0; i < LOAD_THREADS; i++) {
+        load_threads[i]->join();
+    }
+
+    for(int i = 0; i < LOAD_THREADS; i++) {
+        delete load_threads[i];
+    }
+
     /*
     for (int r = 0; r<dims[0]; r++){
         for (int c = 0; c<dims[1]; c++){
@@ -194,7 +214,9 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
         }
     }
     */
-
+   
+       
+   delete[] dims;
     delete[] bpMatrix_buffer;
     //delete[] bpMatrix;
 }

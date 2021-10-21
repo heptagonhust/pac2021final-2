@@ -14,6 +14,7 @@
 #include <boost/pool/pool_alloc.hpp>
 
 const int MAP_CAP = 300000000;
+#define SUBMAP_NUM_EXP2 4
 
 using namespace std;
 using phmap::parallel_flat_hash_map;
@@ -24,7 +25,7 @@ using phmap::parallel_flat_hash_map;
 
 typedef parallel_flat_hash_map<uint64, Position1, std::hash<uint64>,
                                      phmap::priv::hash_default_eq<uint64>,
-                                     boost::fast_pool_allocator<std::pair<uint64, Position> > > BarcodeMap;
+                                     boost::fast_pool_allocator<std::pair<uint64, Position> > , SUBMAP_NUM_EXP2, phmap::NullMutex> BarcodeMap;
 
 inline bool starts_with(string const& value, string const& starting)
 {
