@@ -20,7 +20,7 @@
 
 using namespace std;
 
-#define LOAD_THREADS 32
+#define LOAD_THREADS 16
 
 class ChipMaskHDF5{
 public:

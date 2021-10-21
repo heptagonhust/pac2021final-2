@@ -13,13 +13,13 @@
 #include "common.h"
 #include <parallel_hashmap/phmap.h>
 
-#define SUBMAP_NUM_EXP2 12
+#define SUBMAP_NUM_EXP2 4
 
 using namespace std;
 using phmap::parallel_flat_hash_map;
 typedef parallel_flat_hash_map<uint64, Position1, phmap::priv::hash_default_hash<uint64>, 
                             phmap::priv::hash_default_eq<uint64>, 
-                            std::allocator<std::pair<const uint64, Position1>>, SUBMAP_NUM_EXP2, boost::mutex> BarcodeMap;
+                            std::allocator<std::pair<const uint64, Position1>>, SUBMAP_NUM_EXP2, phmap::NullMutex> BarcodeMap;
 
 inline bool starts_with(string const& value, string const& starting)
 {
