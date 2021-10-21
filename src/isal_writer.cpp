@@ -90,7 +90,7 @@ static bool tryGetInput(WriterInputRB *inputs, bool *inputFinished, int nInputs,
 }
 
 void write_callback(io_context_t ctx, struct iocb *iocb, long res, long res2) {
-  delete iocb->data;
+  delete (uint8_t*)iocb->data;
 }
 
 void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
