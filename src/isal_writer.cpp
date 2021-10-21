@@ -168,7 +168,7 @@ void IsalWriter::single(WriterInputRB *inputs, int nInputs) {
   timespec timeout;
   while(1) {
     timeout.tv_sec = 120;
-    timeout.tv_sec = 0;
+    timeout.tv_nsec = 0;
     if(io_getevents(write_ctx, 0, 1, &e, &timeout)==1) {
       break;
     }
