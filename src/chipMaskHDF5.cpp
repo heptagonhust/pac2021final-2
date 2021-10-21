@@ -92,7 +92,7 @@ herr_t ChipMaskHDF5::writeDataSet(std::string chipID, slideRange& sliderange, Ba
     status = H5Sclose(attributeSpace);
     status = H5Sclose(attributeSpace1);
     status = H5Aclose(attributeID);
-    status = H5Aclose(attrpibuteID1);
+    status = H5Aclose(attributeID1);
 
     //write matrix data to hdf5 file dataset
     status = H5Dwrite(datasetID, H5T_NATIVE_UINT64, memdataspaceID, dataspaceID, H5P_DEFAULT, &bpMatrix_buffer[0]);
@@ -178,7 +178,7 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
                     int hash_val = bpMap.hash(barcodeInt);
                     int load_thread_id = bpMap.subidx(hash_val) / modulo;
                     if(load_thread_id == thread_id) {
-                        bpMap[barcodeInt] = position;
+                        bpMap.insert(make_pair(barcodeInt, position));
                     }
                 }
                 
