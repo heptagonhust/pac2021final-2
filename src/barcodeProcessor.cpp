@@ -328,7 +328,7 @@ void BarcodeProcessor::misMaskGenerate()
 			for (uint64 j = 1; j < 4; j++) {
 				uint64 misMaskInt = j << i * 2;
 				misMask[index] = misMaskInt;
-				index++;
+				index ++;
 			}
 		}
 		if (mOptions->verbose) {

@@ -4,6 +4,8 @@
 #include <iostream>
 #include <hdf5.h>
 #include <unordered_map>
+#include <thread>
+#include <memory>
 #include "common.h"
 #include "util.h"
 
@@ -17,6 +19,8 @@
 #define ATTRIBUTENAME1 "chipInfo"
 
 using namespace std;
+
+#define LOAD_THREADS 32
 
 class ChipMaskHDF5{
 public:
