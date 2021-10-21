@@ -27,7 +27,7 @@ add_executable(${PROJECT_NAME} ${SRC_FILES} ${ZSTD_FILES})
 target_link_libraries(
   ${PROJECT_NAME}
   Boost::serialization
-  HDF5::HDF5
+  hdf5
   Threads::Threads
   igzipwrap
   ZLIB::ZLIB

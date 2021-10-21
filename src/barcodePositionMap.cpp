@@ -1,6 +1,6 @@
 #include "barcodePositionMap.h"
 
-BarcodePositionMap::BarcodePositionMap(Options* opt)
+BarcodePositionMap::BarcodePositionMap(Options* opt) : bpmap(MAP_CAP)
 {
 	mOptions = opt;
 	maskFile = opt->maskFile;
