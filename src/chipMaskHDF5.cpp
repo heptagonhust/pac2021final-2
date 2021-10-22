@@ -1,5 +1,6 @@
 #include "chipMaskHDF5.h"
 #include <semaphore.h>
+#include <sched.h>
 
 ChipMaskHDF5::ChipMaskHDF5(std::string FileName){
     fileName = FileName;
@@ -159,7 +160,15 @@ void ChipMaskHDF5::readDataSet(BarcodeMap& bpMap, int index){
     status = H5Fclose(fileID);
     
 
-    auto loadHashMap = [&bpMap, bpMatrix_buffer, dims, rank, segment](const int &thread_id) {
+	size_t ncores = sysconf(_SC_NPROCESSORS_CONF);
+    auto loadHashMap = [&bpMap, bpMatrix_buffer, dims, rank, segment, ncores](const int &thread_id) {
+        // bind to cores
+        cpu_set_t* set = CPU_ALLOC(ncores);
+        size_t set_size = CPU_ALLOC_SIZE(ncores);
+        CPU_ZERO_S(set_size, set);
+        CPU_SET_S(thread_id, set_size, set);
+        sched_setaffinity(0, set_size, set);
+        CPU_FREE(set);
 
         const int submap_cnt = bpMap.subcnt();
 

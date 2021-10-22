@@ -15,7 +15,7 @@ find_package(Threads REQUIRED)
 find_package(HDF5 REQUIRED)
 find_package(Boost 1.70 REQUIRED COMPONENTS serialization)
 
-add_definitions("-g" "-O3" "-DZWRAP_USE_ZSTD" "-gdwarf-4")
+add_definitions("-g" "-O3" "-DZWRAP_USE_ZSTD" "-gdwarf-4" "-Wno-narrowing")
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${ZSTD_INC})
 include_directories(third_party/parallel-hashmap)
